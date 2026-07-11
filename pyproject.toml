@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "semantic-query-engine"
+version = "0.1.0"
+description = "Natural-language analytics assistant for FMCG sales data -- NL question in, governed SQL and a structured business answer out."
+requires-python = ">=3.10"
+dependencies = [
+    "duckdb>=1.0.0",
+    "pandas>=2.0.0",
+    "numpy>=1.26.0",
+    "pyarrow>=15.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+    "pandas-stubs",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: hits a real LLM provider over the network; requires an API key and is excluded by default (deselect with -m 'not integration' or select with -m integration)",
+]
+addopts = "-m 'not integration'"
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests", "scripts", "evals"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["semantic_query_engine"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true

@@ -1,0 +1,27 @@
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Generated warehouse (rebuilt from data/raw via scripts/init_database.py)
+data/warehouse/*.duckdb
+data/semantic/embedding_cache.json
+
+# Local UI personalization state (favorites, feedback) -- per-user, not source
+data/favorites.json
+data/feedback.jsonl
+
+# Generated report output
+docs/submission-archive/mvp-report/*.docx
