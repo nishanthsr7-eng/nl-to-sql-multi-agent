@@ -1,0 +1,47 @@
+"""Single place that turns :class:`LLMSettings` into an OpenAI-compatible client.
+
+Both Groq and OpenAI are consumed through the ``openai`` SDK — Groq is
+OpenAI-API-compatible and only needs a different ``base_url``. Building the
+client here means the three agents that call an LLM (SQL generation, repair,
+synthesis) never branch on provider themselves.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Protocol
+
+from semantic_query_engine.core.config import LLMSettings
+
+
+class ChatClient(Protocol):
+    """The minimal shape every LLM-calling agent depends on.
+
+    ``build_client`` returns a real ``openai.OpenAI`` instance, which satisfies
+    this structurally. Tests substitute a small fake that returns canned JSON
+    instead -- see tests/unit/fakes.py -- so the LLM-primary code paths can be
+    unit tested without hitting the network or requiring an API key.
+    """
+
+    chat: Any
+    embeddings: Any
+
+
+def build_client(settings: LLMSettings) -> Any:
+    """Construct an OpenAI SDK client configured for the resolved provider.
+
+    Returns ``Any`` rather than ``ChatClient``: the real ``openai.OpenAI`` instance
+    satisfies the protocol structurally (``.chat``, ``.embeddings``), but its
+    attributes are read-only properties, which mypy won't accept as satisfying a
+    (writable-by-default) Protocol attribute -- not worth fighting for what is,
+    at the call sites, already typed as ``ChatClient``.
+
+    Raises if ``settings.is_enabled`` is False — callers are expected to check
+    that first (agents fall back to deterministic behavior instead of calling
+    this at all).
+    """
+    from openai import OpenAI
+
+    if not settings.is_enabled:
+        raise RuntimeError("No LLM API key configured; cannot build a client.")
+
+    return OpenAI(api_key=settings.api_key, base_url=settings.base_url)
