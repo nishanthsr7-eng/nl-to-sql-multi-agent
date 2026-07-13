@@ -1,0 +1,101 @@
+{
+  "tables": [
+    {
+      "table_name": "fmcg_sales",
+      "description": "Daily transactional sales data for FMCG products including details about sku, brand, channel, and units sold.",
+      "columns": [
+        {"name": "date", "type": "DATE", "description": "The date of the transaction"},
+        {"name": "sku", "type": "VARCHAR", "description": "Stock Keeping Unit identifier"},
+        {"name": "brand", "type": "VARCHAR", "description": "Brand of the product"},
+        {"name": "segment", "type": "VARCHAR", "description": "Market segment (e.g., beverages, snacks)"},
+        {"name": "category", "type": "VARCHAR", "description": "Product category"},
+        {"name": "channel", "type": "VARCHAR", "description": "Sales channel (e.g., retail, online)"},
+        {"name": "region", "type": "VARCHAR", "description": "Geographical region"},
+        {"name": "pack_type", "type": "VARCHAR", "description": "Packaging type"},
+        {"name": "price_unit", "type": "FLOAT", "description": "Price per unit"},
+        {"name": "promotion_flag", "type": "INTEGER", "description": "1 if sold under promotion, 0 otherwise"},
+        {"name": "delivery_days", "type": "INTEGER", "description": "Number of days for delivery"},
+        {"name": "stock_available", "type": "INTEGER", "description": "Current stock available in inventory"},
+        {"name": "delivered_qty", "type": "INTEGER", "description": "Quantity delivered to the store"},
+        {"name": "units_sold", "type": "INTEGER", "description": "Number of units sold"}
+      ]
+    },
+    {
+      "table_name": "weekly_modeling_data",
+      "description": "Aggregated weekly data containing advanced metrics and target variables for predictive modeling.",
+      "columns": [
+        {"name": "sku", "type": "VARCHAR", "description": "Stock Keeping Unit identifier"},
+        {"name": "week", "type": "DATE", "description": "Start date of the week"},
+        {"name": "channel", "type": "VARCHAR", "description": "Sales channel"},
+        {"name": "region", "type": "VARCHAR", "description": "Geographical region"},
+        {"name": "units_sold", "type": "INTEGER", "description": "Number of units sold in that week"},
+        {"name": "stock_available", "type": "INTEGER", "description": "Stock available for that week"},
+        {"name": "promotion_flag", "type": "VARCHAR", "description": "Whether there was a promotion that week ('True'/'False' or '1'/'0'). NOTE: this is VARCHAR here but INTEGER on fmcg_sales.promotion_flag -- the certified promotional_uplift formula (promotion_flag = 1) is written for fmcg_sales and must not be applied to this column as-is."},
+        {"name": "price_unit", "type": "FLOAT", "description": "Average unit price"},
+        {"name": "delivery_days", "type": "INTEGER", "description": "Average delivery days in that week"},
+        {"name": "is_holiday_peak", "type": "VARCHAR", "description": "Whether it is a peak holiday week ('True'/'False')"},
+        {"name": "week_number", "type": "INTEGER", "description": "Week number of the year (1-53)"},
+        {"name": "month", "type": "INTEGER", "description": "Month number (1-12)"},
+        {"name": "year", "type": "INTEGER", "description": "Year"},
+        {"name": "is_holiday_week", "type": "VARCHAR", "description": "Whether it is a holiday week ('True'/'False')"},
+        {"name": "is_summer", "type": "VARCHAR", "description": "Whether it is in the summer season ('True'/'False')"},
+        {"name": "is_winter", "type": "VARCHAR", "description": "Whether it is in the winter season ('True'/'False')"},
+        {"name": "sku_age", "type": "INTEGER", "description": "How long the SKU has been active in weeks"},
+        {"name": "lifecycle_stage", "type": "VARCHAR", "description": "Product lifecycle stage (e.g., launch, mature, decline)"},
+        {"name": "lag_1", "type": "INTEGER", "description": "Units sold in the previous week (lag 1)"},
+        {"name": "lag_2", "type": "INTEGER", "description": "Units sold 2 weeks prior (lag 2)"},
+        {"name": "rolling_mean_4", "type": "FLOAT", "description": "4-week rolling average of units sold"},
+        {"name": "rolling_std_4", "type": "FLOAT", "description": "4-week rolling standard deviation of units sold"},
+        {"name": "momentum", "type": "FLOAT", "description": "Sales momentum metric"},
+        {"name": "target_next_week", "type": "INTEGER", "description": "Target prediction variable for next week's units sold"}
+      ]
+    }
+  ],
+  "business_metrics": [
+    {
+      "metric_name": "total_revenue",
+      "definition": "SUM(units_sold * price_unit)",
+      "description": "Total revenue generated from sales.",
+      "triggers": ["revenue"]
+    },
+    {
+      "metric_name": "promotional_uplift",
+      "definition": "(SUM(CASE WHEN promotion_flag = 1 THEN units_sold ELSE 0 END) - SUM(CASE WHEN promotion_flag = 0 THEN units_sold ELSE 0 END)) / NULLIF(SUM(CASE WHEN promotion_flag = 0 THEN units_sold ELSE 0 END), 0)",
+      "description": "The percentage increase in units sold during promotional periods vs non-promotional periods.",
+      "triggers": ["promotion", "promo", "uplift", "campaign"]
+    },
+    {
+      "metric_name": "stock_depletion_rate",
+      "definition": "SUM(units_sold) / NULLIF(SUM(stock_available), 0)",
+      "description": "The rate at which available stock is being sold.",
+      "triggers": ["stock", "depletion", "inventory"]
+    }
+  ],
+  "dimension_values": {
+    "region": ["PL-North", "PL-South", "PL-Central"],
+    "channel": ["Retail", "Discount", "E-commerce"],
+    "brand": ["MiBrand1", "MiBrand2", "MiBrand3", "MiBrand4", "YoBrand1", "YoBrand2", "YoBrand3", "YoBrand4", "ReBrand1", "ReBrand4", "SnBrand2", "SnBrand3", "JuBrand3"],
+    "category": ["Milk", "Yogurt", "ReadyMeal", "Juice", "SnackBar"],
+    "pack_type": ["Single", "Multipack", "Carton"]
+  },
+  "dimension_aliases": {
+    "region": {
+      "north": "PL-North", "pl-north": "PL-North",
+      "south": "PL-South", "pl-south": "PL-South",
+      "central": "PL-Central", "pl-central": "PL-Central"
+    },
+    "channel": {
+      "ecommerce": "E-commerce", "e-commerce": "E-commerce",
+      "retail": "Retail", "discount": "Discount"
+    },
+    "category": {
+      "milk": "Milk", "yogurt": "Yogurt",
+      "readymeal": "ReadyMeal", "ready meal": "ReadyMeal",
+      "juice": "Juice",
+      "snackbar": "SnackBar", "snack bar": "SnackBar"
+    },
+    "pack_type": {
+      "single": "Single", "multipack": "Multipack", "carton": "Carton"
+    }
+  }
+}
