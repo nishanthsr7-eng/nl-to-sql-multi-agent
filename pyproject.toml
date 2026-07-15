@@ -40,6 +40,11 @@ src = ["src", "tests", "scripts", "evals"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+# Long lines in these files are prose -- wrapping would hurt readability and
+# diffability more than it would help.
+"src/semantic_query_engine/agents/planner.py" = ["E501"]
+
 [tool.mypy]
 python_version = "3.10"
 packages = ["semantic_query_engine"]
