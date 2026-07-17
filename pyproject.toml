@@ -47,6 +47,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # Long lines in these files are prose -- wrapping would hurt readability and
 # diffability more than it would help.
+"src/semantic_query_engine/prompts/synthesis.py" = ["E501"]
 "src/semantic_query_engine/agents/planner.py" = ["E501"]
 "src/semantic_query_engine/prompts/few_shot_examples.py" = ["E501"]
 
