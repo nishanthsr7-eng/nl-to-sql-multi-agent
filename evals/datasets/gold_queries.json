@@ -1,0 +1,87 @@
+[
+  {
+    "id": "revenue_by_region",
+    "question": "What is total revenue by region?",
+    "intent": "descriptive_lookup",
+    "expect_clarification": false,
+    "required_columns": ["region", "total_revenue"],
+    "expected_values": {"region": "PL-South", "total_revenue": 6666229.81},
+    "tolerance": 0.001
+  },
+  {
+    "id": "promotion_comparison",
+    "question": "Compare units sold during promotion vs non-promotion periods",
+    "intent": "comparative_analysis",
+    "expect_clarification": false,
+    "required_columns": ["promotion_flag", "total_units"]
+  },
+  {
+    "id": "stock_depletion",
+    "question": "What is the stock depletion rate by region?",
+    "intent": "descriptive_lookup",
+    "expect_clarification": false,
+    "required_columns": ["region", "stock_depletion_rate"]
+  },
+  {
+    "id": "week_on_week",
+    "question": "Which region had the highest week-on-week growth in units sold during March 2024?",
+    "intent": "comparative_analysis",
+    "expect_clarification": false,
+    "required_columns": ["region", "wow_change"]
+  },
+  {
+    "id": "ambiguous_promotion",
+    "question": "How did the promotion do?",
+    "intent": "ambiguous",
+    "expect_clarification": true,
+    "required_columns": []
+  },
+  {
+    "id": "revenue_by_brand",
+    "question": "Compare total revenue across all brands",
+    "intent": "comparative_analysis",
+    "expect_clarification": false,
+    "required_columns": ["brand", "total_revenue"],
+    "expected_values": {"brand": "SnBrand2", "total_revenue": 2860430.84},
+    "tolerance": 0.001
+  },
+  {
+    "id": "stock_depletion_by_category",
+    "question": "What is the stock depletion rate by category?",
+    "intent": "diagnostic_pivot",
+    "expect_clarification": false,
+    "required_columns": ["category", "stock_depletion_rate"],
+    "expected_values": {"category": "Yogurt", "stock_depletion_rate": 0.1367},
+    "tolerance": 0.005
+  },
+  {
+    "id": "monthly_revenue_trend",
+    "question": "Show monthly revenue trend",
+    "intent": "descriptive_lookup",
+    "expect_clarification": false,
+    "required_columns": ["month_start", "total_revenue"]
+  },
+  {
+    "id": "promotional_uplift_by_category",
+    "question": "Which category had the highest promotional uplift?",
+    "intent": "comparative_analysis",
+    "expect_clarification": false,
+    "required_columns": ["category"]
+  },
+  {
+    "id": "sku_regional_lookup",
+    "question": "What were total units sold for SKU MI-006 in the South region last week of January 2024?",
+    "intent": "descriptive_lookup",
+    "expect_clarification": false,
+    "required_columns": ["region", "channel", "total_units"]
+  },
+  {
+    "id": "weekly_modeling_lifecycle_stage",
+    "question": "What is the average units sold by lifecycle stage?",
+    "intent": "descriptive_lookup",
+    "expect_clarification": false,
+    "required_columns": ["lifecycle_stage", "avg_units_sold"],
+    "expected_values": {"lifecycle_stage": "Mature", "avg_units_sold": 129.01},
+    "tolerance": 0.005
+  }
+]
