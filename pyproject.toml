@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "semantic-query-engine"
-version = "0.1.0"
+version = "0.2.0"
 description = "Natural-language analytics assistant for FMCG sales data -- NL question in, governed SQL and a structured business answer out."
 requires-python = ">=3.10"
 dependencies = [
@@ -50,8 +50,9 @@ src = ["src", "tests", "scripts", "evals"]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
-# Long lines in these files are prose -- wrapping would hurt readability and
-# diffability more than it would help.
+# Long lines here are prose (prompt copy, chart config, a generated report's body
+# text, a preview script's diagnostic output) -- wrapping would hurt readability
+# and diffability more than it would help.
 "src/semantic_query_engine/prompts/synthesis.py" = ["E501"]
 "src/semantic_query_engine/ui/charts.py" = ["E501"]
 "src/semantic_query_engine/agents/planner.py" = ["E501"]
