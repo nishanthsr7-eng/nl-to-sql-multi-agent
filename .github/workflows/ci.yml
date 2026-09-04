@@ -27,4 +27,4 @@ jobs:
         run: mypy
 
       - name: Unit tests (no network, no API key)
-        run: pytest tests/unit -v
+        run: python -m pytest tests/unit -v
