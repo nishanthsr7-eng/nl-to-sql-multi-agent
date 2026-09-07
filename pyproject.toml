@@ -11,8 +11,8 @@ dependencies = [
     "duckdb>=1.0.0",
     "pandas>=2.0.0",
     "numpy>=1.26.0",
-    "streamlit>=1.32.0",
-    "altair>=5.0.0",
+    "typer>=0.12.0",
+    "rich>=13.7.0",
     "openai>=1.30.0",
     "pyarrow>=15.0.0",
     "sqlglot>=25.0.0",
@@ -22,15 +22,32 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# The HTTP layer is optional: `sqe ask` and the eval harness never import it, and
+# a CI job or a notebook has no reason to pull in a web server. The container
+# image installs it.
+api = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+]
 dev = [
     "pytest>=8.0.0",
     "ruff>=0.5.0",
     "mypy>=1.10.0",
     "pandas-stubs",
+    # Property-based tests over the validator and the row-security injector.
+    # A fuzzed safety invariant -- "no generated statement ever mutates, and no
+    # accepted query ever escapes its row policy" -- covers the shapes nobody
+    # thought to write a case for, which is the entire class the example-based
+    # tests are weakest on.
+    "hypothesis>=6.100",
+    # dev implies api: the API tests are part of the offline unit tier, and
+    # httpx is what fastapi.testclient drives the app through in-process.
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "httpx>=0.27.0",
 ]
-report = [
-    "python-docx>=1.1.0",
-]
+[project.scripts]
+sqe = "semantic_query_engine.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -50,20 +67,20 @@ src = ["src", "tests", "scripts", "evals"]
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.per-file-ignores]
-# Long lines here are prose (prompt copy, chart config, a generated report's body
-# text, a preview script's diagnostic output) -- wrapping would hurt readability
-# and diffability more than it would help.
+# Long lines here are prose (prompt copy, chart config, the planner's vocabulary)
+# -- wrapping would hurt readability and diffability more than it would help.
 "src/semantic_query_engine/prompts/synthesis.py" = ["E501"]
-"src/semantic_query_engine/ui/charts.py" = ["E501"]
+"src/semantic_query_engine/cli/render.py" = ["E501"]
 "src/semantic_query_engine/agents/planner.py" = ["E501"]
 "src/semantic_query_engine/prompts/few_shot_examples.py" = ["E501"]
-"scripts/build_mvp_report.py" = ["E501"]
-"evals/run_synthesis_preview.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.10"
-packages = ["semantic_query_engine"]
-mypy_path = "src"
+# ``evals`` is type-checked alongside the package, not treated as scratch
+# scripts: it is where the project's reported numbers are computed, so a type
+# error there is a wrong number rather than a broken script.
+packages = ["semantic_query_engine", "evals"]
+mypy_path = "src:."
 ignore_missing_imports = true
 warn_unused_ignores = true
 warn_redundant_casts = true
