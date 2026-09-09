@@ -45,3 +45,24 @@ def build_client(settings: LLMSettings) -> Any:
         raise RuntimeError("No LLM API key configured; cannot build a client.")
 
     return OpenAI(api_key=settings.api_key, base_url=settings.base_url)
+
+
+def build_embedding_client(settings: LLMSettings) -> Any:
+    """The client the vector-retrieval path embeds through.
+
+    Separate from :func:`build_client` because embeddings and generation need not
+    come from the same provider: a hosted generator with no embeddings endpoint
+    (Groq) plus a local embedder is a working combination, and it is the one that
+    keeps ``sqe matrix`` rows comparable -- otherwise the rows differ in retrieval
+    as well as in the generator, and the comparison silently measures two changes.
+
+    When neither override is set this returns a client configured exactly like
+    ``build_client``'s, so the ordinary single-provider case is unaffected.
+    """
+    from openai import OpenAI
+
+    api_key, base_url = settings.embedding_endpoint
+    if not api_key:
+        raise RuntimeError("No API key configured for embeddings; cannot build a client.")
+
+    return OpenAI(api_key=api_key, base_url=base_url)
