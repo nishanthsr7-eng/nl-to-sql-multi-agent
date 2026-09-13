@@ -2,53 +2,555 @@
   "tables": [
     {
       "table_name": "fmcg_sales",
-      "description": "Daily transactional sales data for FMCG products including details about sku, brand, channel, and units sold.",
+      "description": "Daily sales fact, one row per date, sku and store. Descriptive attributes live in dim_product and dim_store -- a question about brand, category or region requires a join.",
+      "grain": {
+        "columns": [
+          "date",
+          "sku",
+          "store_id"
+        ],
+        "additive_measures": [
+          "units_sold",
+          "delivered_qty"
+        ],
+        "level_measures": [
+          "stock_available"
+        ]
+      },
       "columns": [
-        {"name": "date", "type": "DATE", "description": "The date of the transaction"},
-        {"name": "sku", "type": "VARCHAR", "description": "Stock Keeping Unit identifier"},
-        {"name": "brand", "type": "VARCHAR", "description": "Brand of the product"},
-        {"name": "segment", "type": "VARCHAR", "description": "Market segment (e.g., beverages, snacks)"},
-        {"name": "category", "type": "VARCHAR", "description": "Product category"},
-        {"name": "channel", "type": "VARCHAR", "description": "Sales channel (e.g., retail, online)"},
-        {"name": "region", "type": "VARCHAR", "description": "Geographical region"},
-        {"name": "pack_type", "type": "VARCHAR", "description": "Packaging type"},
-        {"name": "price_unit", "type": "FLOAT", "description": "Price per unit"},
-        {"name": "promotion_flag", "type": "INTEGER", "description": "1 if sold under promotion, 0 otherwise"},
-        {"name": "delivery_days", "type": "INTEGER", "description": "Number of days for delivery"},
-        {"name": "stock_available", "type": "INTEGER", "description": "Current stock available in inventory"},
-        {"name": "delivered_qty", "type": "INTEGER", "description": "Quantity delivered to the store"},
-        {"name": "units_sold", "type": "INTEGER", "description": "Number of units sold"}
+        {
+          "name": "date",
+          "type": "DATE",
+          "description": "The date of the transaction",
+          "role": "day"
+        },
+        {
+          "name": "sku",
+          "type": "VARCHAR",
+          "description": "Stock Keeping Unit identifier; joins to dim_product.sku"
+        },
+        {
+          "name": "store_id",
+          "type": "VARCHAR",
+          "description": "Store identifier; joins to dim_store.store_id. Region and channel are attributes of the store, not of the sale."
+        },
+        {
+          "name": "pack_type",
+          "type": "VARCHAR",
+          "description": "Packaging type of the units sold. Stays on the fact rather than dim_product because a single SKU ships in more than one pack type."
+        },
+        {
+          "name": "price_unit",
+          "type": "FLOAT",
+          "description": "Price per unit at the time of sale"
+        },
+        {
+          "name": "promotion_flag",
+          "type": "INTEGER",
+          "description": "1 if sold under promotion, 0 otherwise"
+        },
+        {
+          "name": "delivery_days",
+          "type": "INTEGER",
+          "description": "Number of days for delivery"
+        },
+        {
+          "name": "stock_available",
+          "type": "INTEGER",
+          "description": "Stock available at the store on that date. A level, not a flow."
+        },
+        {
+          "name": "delivered_qty",
+          "type": "INTEGER",
+          "description": "Quantity delivered to the store"
+        },
+        {
+          "name": "units_sold",
+          "type": "INTEGER",
+          "description": "Number of units sold"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_product",
+      "description": "One row per SKU: brand, category, segment, launch date and unit cost.",
+      "grain": {
+        "columns": [
+          "sku"
+        ],
+        "additive_measures": [],
+        "level_measures": [
+          "unit_cost"
+        ]
+      },
+      "columns": [
+        {
+          "name": "sku",
+          "type": "VARCHAR",
+          "description": "Stock Keeping Unit identifier (primary key)"
+        },
+        {
+          "name": "brand",
+          "type": "VARCHAR",
+          "description": "Brand of the product"
+        },
+        {
+          "name": "category",
+          "type": "VARCHAR",
+          "description": "Product category"
+        },
+        {
+          "name": "segment",
+          "type": "VARCHAR",
+          "description": "Market sub-segment within the category"
+        },
+        {
+          "name": "launch_date",
+          "type": "DATE",
+          "description": "First date the SKU was sold",
+          "role": "day"
+        },
+        {
+          "name": "unit_cost",
+          "type": "FLOAT",
+          "description": "Cost of goods per unit, used for margin"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_store",
+      "description": "One row per store: its region, channel, format, city and population tier.",
+      "grain": {
+        "columns": [
+          "store_id"
+        ],
+        "additive_measures": [],
+        "level_measures": []
+      },
+      "columns": [
+        {
+          "name": "store_id",
+          "type": "VARCHAR",
+          "description": "Store identifier (primary key)"
+        },
+        {
+          "name": "region",
+          "type": "VARCHAR",
+          "description": "Geographical region of the store. NOTE: weekly_modeling_data also has a region column; an unqualified reference in a join is ambiguous."
+        },
+        {
+          "name": "channel",
+          "type": "VARCHAR",
+          "description": "Sales channel of the store. Also present on weekly_modeling_data."
+        },
+        {
+          "name": "store_format",
+          "type": "VARCHAR",
+          "description": "Store format (Hypermarket, Supermarket, Convenience, DiscountStore, FulfilmentCentre)"
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR",
+          "description": "City the store is in"
+        },
+        {
+          "name": "population_tier",
+          "type": "VARCHAR",
+          "description": "Catchment size tier (tier_1 largest)"
+        },
+        {
+          "name": "opened_date",
+          "type": "DATE",
+          "description": "Date the store opened",
+          "role": "day"
+        }
+      ]
+    },
+    {
+      "table_name": "dim_calendar",
+      "description": "One row per calendar day, covering 2022-01-01 to 2024-12-31. The only supported bridge between daily facts and weekly_modeling_data: join fmcg_sales.date to dim_calendar.date, then dim_calendar.week_start to weekly_modeling_data.week.",
+      "grain": {
+        "columns": [
+          "date"
+        ],
+        "additive_measures": [],
+        "level_measures": []
+      },
+      "columns": [
+        {
+          "name": "date",
+          "type": "DATE",
+          "description": "Calendar day (primary key)",
+          "role": "day"
+        },
+        {
+          "name": "week_start",
+          "type": "DATE",
+          "description": "Monday of the ISO week this day falls in; equals weekly_modeling_data.week",
+          "role": "week_start"
+        },
+        {
+          "name": "iso_week",
+          "type": "INTEGER",
+          "description": "ISO week number (1-53)"
+        },
+        {
+          "name": "year",
+          "type": "INTEGER",
+          "description": "Calendar year"
+        },
+        {
+          "name": "month",
+          "type": "INTEGER",
+          "description": "Calendar month (1-12)"
+        },
+        {
+          "name": "day_of_week",
+          "type": "INTEGER",
+          "description": "1 = Monday through 7 = Sunday"
+        },
+        {
+          "name": "fiscal_year",
+          "type": "INTEGER",
+          "description": "Fiscal year, which starts on 1 July. Differs from the calendar year for July through December."
+        },
+        {
+          "name": "fiscal_quarter",
+          "type": "INTEGER",
+          "description": "Fiscal quarter 1-4, where Q1 is July to September. Not the same as a calendar quarter."
+        },
+        {
+          "name": "fiscal_week",
+          "type": "INTEGER",
+          "description": "Week number within the fiscal year"
+        },
+        {
+          "name": "season",
+          "type": "VARCHAR",
+          "description": "Winter, Summer or Shoulder"
+        },
+        {
+          "name": "is_holiday",
+          "type": "BOOLEAN",
+          "description": "True on a public holiday"
+        },
+        {
+          "name": "is_holiday_peak",
+          "type": "BOOLEAN",
+          "description": "True in the pre-Christmas peak trading weeks"
+        }
+      ]
+    },
+    {
+      "table_name": "fact_inventory",
+      "description": "Daily stock position per store and SKU for the trailing 90 days of the sales period. Carries its own units_sold at the SAME grain as fmcg_sales: summing units_sold from both tables in one query double-counts.",
+      "grain": {
+        "columns": [
+          "date",
+          "store_id",
+          "sku"
+        ],
+        "additive_measures": [
+          "receipts",
+          "units_sold"
+        ],
+        "level_measures": [
+          "opening_stock",
+          "closing_stock"
+        ]
+      },
+      "columns": [
+        {
+          "name": "date",
+          "type": "DATE",
+          "description": "The stock position date",
+          "role": "day"
+        },
+        {
+          "name": "store_id",
+          "type": "VARCHAR",
+          "description": "Store identifier; joins to dim_store.store_id"
+        },
+        {
+          "name": "sku",
+          "type": "VARCHAR",
+          "description": "Stock Keeping Unit identifier; joins to dim_product.sku"
+        },
+        {
+          "name": "opening_stock",
+          "type": "INTEGER",
+          "description": "Units on hand at the start of the day. A level: summing it across dates is not a quantity."
+        },
+        {
+          "name": "receipts",
+          "type": "INTEGER",
+          "description": "Units received into the store that day"
+        },
+        {
+          "name": "units_sold",
+          "type": "INTEGER",
+          "description": "Units sold that day. The same measure fmcg_sales carries, at the same grain."
+        },
+        {
+          "name": "closing_stock",
+          "type": "INTEGER",
+          "description": "Units on hand at the end of the day. A level."
+        }
+      ]
+    },
+    {
+      "table_name": "fact_promotions",
+      "description": "One row per promotion period: a date RANGE, not a single date. Joining this to a daily fact on sku alone multiplies every sales row by the number of days in the promotion.",
+      "grain": {
+        "columns": [
+          "promo_id"
+        ],
+        "additive_measures": [],
+        "level_measures": [
+          "discount_depth"
+        ]
+      },
+      "columns": [
+        {
+          "name": "promo_id",
+          "type": "VARCHAR",
+          "description": "Promotion identifier (primary key)"
+        },
+        {
+          "name": "sku",
+          "type": "VARCHAR",
+          "description": "The promoted SKU; joins to dim_product.sku"
+        },
+        {
+          "name": "region",
+          "type": "VARCHAR",
+          "description": "Region the promotion ran in"
+        },
+        {
+          "name": "store_id",
+          "type": "VARCHAR",
+          "description": "Store the promotion was limited to, or NULL for a chain-wide promotion. An inner join to dim_store drops every chain-wide promotion."
+        },
+        {
+          "name": "start_date",
+          "type": "DATE",
+          "description": "First day of the promotion",
+          "role": "day"
+        },
+        {
+          "name": "end_date",
+          "type": "DATE",
+          "description": "Last day of the promotion",
+          "role": "day"
+        },
+        {
+          "name": "discount_depth",
+          "type": "FLOAT",
+          "description": "Fractional discount, 0.05 to 0.35"
+        },
+        {
+          "name": "mechanic",
+          "type": "VARCHAR",
+          "description": "Promotion mechanic (BOGO, PriceOff, Bundle, LoyaltyPoints, DisplayFeature)"
+        }
       ]
     },
     {
       "table_name": "weekly_modeling_data",
-      "description": "Aggregated weekly data containing advanced metrics and target variables for predictive modeling.",
+      "description": "Aggregated weekly data containing advanced metrics and target variables for predictive modeling. Its grain is the week, not the day: joining it to a daily fact without going through dim_calendar.week_start fans rows out sevenfold.",
+      "grain": {
+        "columns": [
+          "week",
+          "sku",
+          "region",
+          "channel"
+        ],
+        "additive_measures": [
+          "units_sold"
+        ],
+        "level_measures": [
+          "stock_available",
+          "price_unit",
+          "rolling_mean_4",
+          "rolling_std_4",
+          "momentum"
+        ]
+      },
       "columns": [
-        {"name": "sku", "type": "VARCHAR", "description": "Stock Keeping Unit identifier"},
-        {"name": "week", "type": "DATE", "description": "Start date of the week"},
-        {"name": "channel", "type": "VARCHAR", "description": "Sales channel"},
-        {"name": "region", "type": "VARCHAR", "description": "Geographical region"},
-        {"name": "units_sold", "type": "INTEGER", "description": "Number of units sold in that week"},
-        {"name": "stock_available", "type": "INTEGER", "description": "Stock available for that week"},
-        {"name": "promotion_flag", "type": "VARCHAR", "description": "Whether there was a promotion that week ('True'/'False' or '1'/'0'). NOTE: this is VARCHAR here but INTEGER on fmcg_sales.promotion_flag -- the certified promotional_uplift formula (promotion_flag = 1) is written for fmcg_sales and must not be applied to this column as-is."},
-        {"name": "price_unit", "type": "FLOAT", "description": "Average unit price"},
-        {"name": "delivery_days", "type": "INTEGER", "description": "Average delivery days in that week"},
-        {"name": "is_holiday_peak", "type": "VARCHAR", "description": "Whether it is a peak holiday week ('True'/'False')"},
-        {"name": "week_number", "type": "INTEGER", "description": "Week number of the year (1-53)"},
-        {"name": "month", "type": "INTEGER", "description": "Month number (1-12)"},
-        {"name": "year", "type": "INTEGER", "description": "Year"},
-        {"name": "is_holiday_week", "type": "VARCHAR", "description": "Whether it is a holiday week ('True'/'False')"},
-        {"name": "is_summer", "type": "VARCHAR", "description": "Whether it is in the summer season ('True'/'False')"},
-        {"name": "is_winter", "type": "VARCHAR", "description": "Whether it is in the winter season ('True'/'False')"},
-        {"name": "sku_age", "type": "INTEGER", "description": "How long the SKU has been active in weeks"},
-        {"name": "lifecycle_stage", "type": "VARCHAR", "description": "Product lifecycle stage (e.g., launch, mature, decline)"},
-        {"name": "lag_1", "type": "INTEGER", "description": "Units sold in the previous week (lag 1)"},
-        {"name": "lag_2", "type": "INTEGER", "description": "Units sold 2 weeks prior (lag 2)"},
-        {"name": "rolling_mean_4", "type": "FLOAT", "description": "4-week rolling average of units sold"},
-        {"name": "rolling_std_4", "type": "FLOAT", "description": "4-week rolling standard deviation of units sold"},
-        {"name": "momentum", "type": "FLOAT", "description": "Sales momentum metric"},
-        {"name": "target_next_week", "type": "INTEGER", "description": "Target prediction variable for next week's units sold"}
+        {
+          "name": "sku",
+          "type": "VARCHAR",
+          "description": "Stock Keeping Unit identifier"
+        },
+        {
+          "name": "week",
+          "type": "DATE",
+          "description": "Monday of the week. Equals dim_calendar.week_start, NOT fmcg_sales.date.",
+          "role": "week_start"
+        },
+        {
+          "name": "channel",
+          "type": "VARCHAR",
+          "description": "Sales channel. Also present on dim_store."
+        },
+        {
+          "name": "region",
+          "type": "VARCHAR",
+          "description": "Geographical region. Also present on dim_store -- an unqualified reference in a join is ambiguous."
+        },
+        {
+          "name": "units_sold",
+          "type": "INTEGER",
+          "description": "Number of units sold in that week. A weekly total: do not add it to a daily units_sold."
+        },
+        {
+          "name": "stock_available",
+          "type": "INTEGER",
+          "description": "Stock available for that week"
+        },
+        {
+          "name": "promotion_flag",
+          "type": "VARCHAR",
+          "description": "Whether there was a promotion that week ('True'/'False' or '1'/'0'). NOTE: this is VARCHAR here but INTEGER on fmcg_sales.promotion_flag -- the certified promotional_uplift formula (promotion_flag = 1) is written for fmcg_sales and must not be applied to this column as-is."
+        },
+        {
+          "name": "price_unit",
+          "type": "FLOAT",
+          "description": "Average unit price"
+        },
+        {
+          "name": "delivery_days",
+          "type": "INTEGER",
+          "description": "Average delivery days in that week"
+        },
+        {
+          "name": "is_holiday_peak",
+          "type": "VARCHAR",
+          "description": "Whether it is a peak holiday week ('True'/'False')"
+        },
+        {
+          "name": "week_number",
+          "type": "INTEGER",
+          "description": "Week number of the year (1-53)"
+        },
+        {
+          "name": "month",
+          "type": "INTEGER",
+          "description": "Month number (1-12)"
+        },
+        {
+          "name": "year",
+          "type": "INTEGER",
+          "description": "Year"
+        },
+        {
+          "name": "is_holiday_week",
+          "type": "VARCHAR",
+          "description": "Whether it is a holiday week ('True'/'False')"
+        },
+        {
+          "name": "is_summer",
+          "type": "VARCHAR",
+          "description": "Whether it is in the summer season ('True'/'False')"
+        },
+        {
+          "name": "is_winter",
+          "type": "VARCHAR",
+          "description": "Whether it is in the winter season ('True'/'False')"
+        },
+        {
+          "name": "sku_age",
+          "type": "INTEGER",
+          "description": "How long the SKU has been active in weeks"
+        },
+        {
+          "name": "lifecycle_stage",
+          "type": "VARCHAR",
+          "description": "Product lifecycle stage (e.g., launch, mature, decline)"
+        },
+        {
+          "name": "lag_1",
+          "type": "INTEGER",
+          "description": "Units sold in the previous week (lag 1)"
+        },
+        {
+          "name": "lag_2",
+          "type": "INTEGER",
+          "description": "Units sold 2 weeks prior (lag 2)"
+        },
+        {
+          "name": "rolling_mean_4",
+          "type": "FLOAT",
+          "description": "4-week rolling average of units sold"
+        },
+        {
+          "name": "rolling_std_4",
+          "type": "FLOAT",
+          "description": "4-week rolling standard deviation of units sold"
+        },
+        {
+          "name": "momentum",
+          "type": "FLOAT",
+          "description": "Sales momentum metric"
+        },
+        {
+          "name": "target_next_week",
+          "type": "INTEGER",
+          "description": "Target prediction variable for next week's units sold"
+        }
       ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "fmcg_sales.sku",
+      "to": "dim_product.sku",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "fmcg_sales.store_id",
+      "to": "dim_store.store_id",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "fmcg_sales.date",
+      "to": "dim_calendar.date",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "fact_inventory.sku",
+      "to": "dim_product.sku",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "fact_inventory.store_id",
+      "to": "dim_store.store_id",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "fact_inventory.date",
+      "to": "dim_calendar.date",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "fact_promotions.sku",
+      "to": "dim_product.sku",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "fact_promotions.store_id",
+      "to": "dim_store.store_id",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "weekly_modeling_data.sku",
+      "to": "dim_product.sku",
+      "cardinality": "many_to_one"
+    },
+    {
+      "from": "weekly_modeling_data.week",
+      "to": "dim_calendar.week_start",
+      "cardinality": "many_to_many"
     }
   ],
   "business_metrics": [
@@ -56,46 +558,482 @@
       "metric_name": "total_revenue",
       "definition": "SUM(units_sold * price_unit)",
       "description": "Total revenue generated from sales.",
-      "triggers": ["revenue"]
+      "triggers": [
+        "revenue"
+      ]
+    },
+    {
+      "metric_name": "gross_margin",
+      "definition": "SUM(units_sold * (price_unit - unit_cost))",
+      "description": "Revenue less cost of goods sold. unit_cost lives on dim_product, so this metric cannot be computed without joining fmcg_sales to dim_product.",
+      "triggers": [
+        "margin",
+        "profit",
+        "profitability",
+        "gross margin"
+      ]
     },
     {
       "metric_name": "promotional_uplift",
       "definition": "(SUM(CASE WHEN promotion_flag = 1 THEN units_sold ELSE 0 END) - SUM(CASE WHEN promotion_flag = 0 THEN units_sold ELSE 0 END)) / NULLIF(SUM(CASE WHEN promotion_flag = 0 THEN units_sold ELSE 0 END), 0)",
       "description": "The percentage increase in units sold during promotional periods vs non-promotional periods.",
-      "triggers": ["promotion", "promo", "uplift", "campaign"]
+      "triggers": [
+        "promotion",
+        "promo",
+        "uplift",
+        "campaign"
+      ]
     },
     {
       "metric_name": "stock_depletion_rate",
       "definition": "SUM(units_sold) / NULLIF(SUM(stock_available), 0)",
       "description": "The rate at which available stock is being sold.",
-      "triggers": ["stock", "depletion", "inventory"]
+      "triggers": [
+        "stock",
+        "depletion",
+        "inventory"
+      ]
     }
   ],
   "dimension_values": {
-    "region": ["PL-North", "PL-South", "PL-Central"],
-    "channel": ["Retail", "Discount", "E-commerce"],
-    "brand": ["MiBrand1", "MiBrand2", "MiBrand3", "MiBrand4", "YoBrand1", "YoBrand2", "YoBrand3", "YoBrand4", "ReBrand1", "ReBrand4", "SnBrand2", "SnBrand3", "JuBrand3"],
-    "category": ["Milk", "Yogurt", "ReadyMeal", "Juice", "SnackBar"],
-    "pack_type": ["Single", "Multipack", "Carton"]
+    "region": [
+      "PL-North",
+      "PL-South",
+      "PL-Central"
+    ],
+    "channel": [
+      "Retail",
+      "Discount",
+      "E-commerce"
+    ],
+    "brand": [
+      "MiBrand1",
+      "MiBrand2",
+      "MiBrand3",
+      "MiBrand4",
+      "YoBrand1",
+      "YoBrand2",
+      "YoBrand3",
+      "YoBrand4",
+      "ReBrand1",
+      "ReBrand4",
+      "SnBrand2",
+      "SnBrand3",
+      "JuBrand3"
+    ],
+    "category": [
+      "Milk",
+      "Yogurt",
+      "ReadyMeal",
+      "Juice",
+      "SnackBar"
+    ],
+    "pack_type": [
+      "Single",
+      "Multipack",
+      "Carton"
+    ],
+    "store_format": [
+      "Hypermarket",
+      "Supermarket",
+      "Convenience",
+      "DiscountStore",
+      "FulfilmentCentre"
+    ],
+    "population_tier": [
+      "tier_1",
+      "tier_2",
+      "tier_3"
+    ],
+    "city": [
+      "Gdansk",
+      "Szczecin",
+      "Olsztyn",
+      "Krakow",
+      "Katowice",
+      "Rzeszow",
+      "Warszawa",
+      "Lodz",
+      "Radom"
+    ],
+    "mechanic": [
+      "BOGO",
+      "PriceOff",
+      "Bundle",
+      "LoyaltyPoints",
+      "DisplayFeature"
+    ],
+    "season": [
+      "Winter",
+      "Summer",
+      "Shoulder"
+    ]
   },
   "dimension_aliases": {
     "region": {
-      "north": "PL-North", "pl-north": "PL-North",
-      "south": "PL-South", "pl-south": "PL-South",
-      "central": "PL-Central", "pl-central": "PL-Central"
+      "north": "PL-North",
+      "pl-north": "PL-North",
+      "south": "PL-South",
+      "pl-south": "PL-South",
+      "central": "PL-Central",
+      "pl-central": "PL-Central"
     },
     "channel": {
-      "ecommerce": "E-commerce", "e-commerce": "E-commerce",
-      "retail": "Retail", "discount": "Discount"
+      "ecommerce": "E-commerce",
+      "e-commerce": "E-commerce",
+      "retail": "Retail",
+      "discount": "Discount"
     },
     "category": {
-      "milk": "Milk", "yogurt": "Yogurt",
-      "readymeal": "ReadyMeal", "ready meal": "ReadyMeal",
+      "milk": "Milk",
+      "yogurt": "Yogurt",
+      "readymeal": "ReadyMeal",
+      "ready meal": "ReadyMeal",
       "juice": "Juice",
-      "snackbar": "SnackBar", "snack bar": "SnackBar"
+      "snackbar": "SnackBar",
+      "snack bar": "SnackBar"
     },
     "pack_type": {
-      "single": "Single", "multipack": "Multipack", "carton": "Carton"
+      "single": "Single",
+      "multipack": "Multipack",
+      "carton": "Carton"
+    },
+    "store_format": {
+      "hypermarket": "Hypermarket",
+      "supermarket": "Supermarket",
+      "convenience": "Convenience",
+      "convenience store": "Convenience",
+      "discount store": "DiscountStore",
+      "fulfilment centre": "FulfilmentCentre",
+      "fulfillment center": "FulfilmentCentre"
+    },
+    "population_tier": {
+      "tier 1": "tier_1",
+      "tier1": "tier_1",
+      "tier_1": "tier_1",
+      "tier 2": "tier_2",
+      "tier2": "tier_2",
+      "tier_2": "tier_2",
+      "tier 3": "tier_3",
+      "tier3": "tier_3",
+      "tier_3": "tier_3"
+    },
+    "mechanic": {
+      "bogo": "BOGO",
+      "buy one get one": "BOGO",
+      "price off": "PriceOff",
+      "priceoff": "PriceOff",
+      "bundle": "Bundle",
+      "loyalty points": "LoyaltyPoints",
+      "loyalty": "LoyaltyPoints",
+      "display": "DisplayFeature",
+      "display feature": "DisplayFeature"
+    },
+    "season": {
+      "winter": "Winter",
+      "summer": "Summer",
+      "shoulder": "Shoulder"
     }
+  },
+  "identifier_patterns": {
+    "sku": "\\b([A-Z]{2}-\\d{3})\\b",
+    "store_id": "\\b(ST-\\d{3})\\b",
+    "promo_id": "\\b(PR-\\d{5})\\b"
+  },
+  "language": {
+    "domain_noun": "FMCG",
+    "flag_columns": [
+      {
+        "name": "promotion_flag",
+        "description": "INTEGER -- 1 (promoted), 0 (not promoted)"
+      }
+    ],
+    "metric_keywords": {
+      "units_or_revenue": [
+        "revenue",
+        "sales",
+        "units"
+      ],
+      "stock": [
+        "stock",
+        "depletion",
+        "inventory"
+      ],
+      "promotion": [
+        "promotion",
+        "promo",
+        "uplift",
+        "campaign"
+      ],
+      "delivery": [
+        "delivery"
+      ]
+    },
+    "anchor_dimensions": [
+      "category",
+      "brand"
+    ],
+    "scope_dimensions": [
+      "category",
+      "brand",
+      "channel"
+    ],
+    "grounding_keywords": [
+      "revenue",
+      "sales",
+      "units",
+      "stock",
+      "depletion",
+      "inventory",
+      "brand",
+      "category",
+      "channel"
+    ],
+    "vague_openers": [
+      "how did",
+      "how is",
+      "tell me about",
+      "what about"
+    ],
+    "scoping_cues": [
+      "compare",
+      "versus",
+      "growth",
+      "highest",
+      "lowest",
+      "which",
+      "by",
+      "across",
+      "breakdown",
+      "split"
+    ],
+    "strong_comparative_hints": [
+      "compare",
+      "vs",
+      "versus",
+      "growth",
+      "rank",
+      "highest",
+      "lowest"
+    ],
+    "comparative_hints": [
+      "compare",
+      "vs",
+      "versus",
+      "growth",
+      "delta",
+      "week-on-week",
+      "month over month",
+      "year over year",
+      "yoy",
+      "highest",
+      "lowest",
+      "top",
+      "rank",
+      "more than",
+      "less than",
+      "better",
+      "worse",
+      "outperform",
+      "underperform",
+      "difference",
+      "increased",
+      "decreased",
+      "improved",
+      "declined",
+      "did last month",
+      "last month campaign",
+      "campaign improve"
+    ],
+    "diagnostic_hints": [
+      "which",
+      "benefit",
+      "inventory",
+      "promotion",
+      "category",
+      "join",
+      "across",
+      "impact",
+      "drivers",
+      "breakdown",
+      "split",
+      "by brand",
+      "by channel",
+      "by category",
+      "by pack",
+      "by segment",
+      "benefited most",
+      "saw",
+      "reduction",
+      "during",
+      "trade promotion",
+      "sku hierarchy"
+    ],
+    "missing_param_prompts": {
+      "metric": "metric (e.g. revenue, units sold, stock depletion)",
+      "timeframe": "timeframe (e.g. last week, March 2024, 2023)",
+      "scope": "product scope (e.g. SKU, brand, or category)"
+    },
+    "clarification_example": "Example: \"What was the total revenue for the Yogurt category in 2024?\"",
+    "topic_prompts": [
+      {
+        "triggers": [
+          "promotion",
+          "promo",
+          "campaign"
+        ],
+        "prompt": "Your promotion question needs more detail. Would you like to see:\n• Revenue impact — total revenue during vs. outside promotion?\n• Inventory depletion — stock reduction rate during the campaign?\n• Regional sales comparison — which region responded best?\n\nPlease re-state with: metric, timeframe, and product/category scope."
+      }
+    ],
+    "recovery_ideas": [
+      {
+        "triggers": [
+          "promotion",
+          "promo"
+        ],
+        "suggestions": [
+          "Compare promotion versus non-promotion units sold by channel.",
+          "Compare promotion versus non-promotion revenue by category.",
+          "Which brand had the highest promotional uplift?"
+        ]
+      },
+      {
+        "triggers": [
+          "stock",
+          "inventory"
+        ],
+        "suggestions": [
+          "What is the stock depletion rate by SKU?",
+          "Compare stock depletion rate by category.",
+          "What is the stock depletion rate by channel?"
+        ]
+      }
+    ],
+    "default_recovery_ideas": [
+      "Compare total revenue across all brands.",
+      "Show units sold by category across each channel.",
+      "Show year-over-year revenue trend."
+    ]
+  },
+  "few_shot_examples": [
+    {
+      "question": "What were total units sold for SKU MI-006 in the PL-South region in the last week of January 2024?",
+      "sql": "SELECT st.region, st.channel, SUM(s.units_sold) AS total_units_sold\nFROM fmcg_sales AS s\nJOIN dim_store AS st ON s.store_id = st.store_id\nWHERE s.sku = 'MI-006'\n  AND st.region = 'PL-South'\n  AND s.date BETWEEN '2024-01-22' AND '2024-01-28'\nGROUP BY st.region, st.channel\nORDER BY total_units_sold DESC"
+    },
+    {
+      "question": "Compare total revenue across all brands.",
+      "sql": "SELECT p.brand,\n       ROUND(SUM(s.units_sold * s.price_unit), 2) AS total_revenue\nFROM fmcg_sales AS s\nJOIN dim_product AS p ON s.sku = p.sku\nGROUP BY p.brand\nORDER BY total_revenue DESC"
+    },
+    {
+      "question": "Show units sold by category across each sales channel.",
+      "sql": "SELECT p.category, st.channel,\n       SUM(s.units_sold) AS total_units\nFROM fmcg_sales AS s\nJOIN dim_product AS p ON s.sku = p.sku\nJOIN dim_store AS st ON s.store_id = st.store_id\nGROUP BY p.category, st.channel\nORDER BY p.category, total_units DESC"
+    },
+    {
+      "question": "Compare units sold during promotion versus non-promotion periods by channel.",
+      "sql": "SELECT st.channel, s.promotion_flag,\n       SUM(s.units_sold) AS total_units,\n       ROUND(SUM(s.units_sold * s.price_unit), 2) AS total_revenue\nFROM fmcg_sales AS s\nJOIN dim_store AS st ON s.store_id = st.store_id\nGROUP BY st.channel, s.promotion_flag\nORDER BY st.channel, s.promotion_flag"
+    },
+    {
+      "question": "What is the stock depletion rate by category?",
+      "sql": "SELECT p.category,\n       ROUND(SUM(s.units_sold) * 1.0 / NULLIF(SUM(s.stock_available), 0), 4) AS stock_depletion_rate,\n       SUM(s.stock_available) AS total_stock,\n       SUM(s.units_sold) AS total_units_sold\nFROM fmcg_sales AS s\nJOIN dim_product AS p ON s.sku = p.sku\nGROUP BY p.category\nORDER BY stock_depletion_rate DESC"
+    },
+    {
+      "question": "Which brand had the highest week-on-week growth in units sold in 2024?",
+      "sql": "WITH weekly AS (\n    SELECT p.brand,\n           DATE_TRUNC('week', CAST(s.date AS DATE)) AS week_start,\n           SUM(s.units_sold) AS units\n    FROM fmcg_sales AS s\n    JOIN dim_product AS p ON s.sku = p.sku\n    WHERE s.date BETWEEN '2024-01-01' AND '2024-12-31'\n    GROUP BY p.brand, DATE_TRUNC('week', CAST(s.date AS DATE))\n),\ngrowth AS (\n    SELECT brand, week_start, units,\n           LAG(units) OVER (PARTITION BY brand ORDER BY week_start) AS prev_units\n    FROM weekly\n)\nSELECT brand, week_start, units, prev_units,\n       (units - prev_units) AS wow_change\nFROM growth\nWHERE prev_units IS NOT NULL\nORDER BY wow_change DESC\nLIMIT 10"
+    },
+    {
+      "question": "Show total revenue year over year.",
+      "sql": "SELECT EXTRACT(YEAR FROM CAST(s.date AS DATE)) AS year,\n       ROUND(SUM(s.units_sold * s.price_unit), 2) AS total_revenue,\n       SUM(s.units_sold) AS total_units\nFROM fmcg_sales AS s\nGROUP BY year\nORDER BY year"
+    },
+    {
+      "question": "Compare revenue by pack type across categories.",
+      "sql": "SELECT s.pack_type, p.category,\n       ROUND(SUM(s.units_sold * s.price_unit), 2) AS total_revenue\nFROM fmcg_sales AS s\nJOIN dim_product AS p ON s.sku = p.sku\nGROUP BY s.pack_type, p.category\nORDER BY s.pack_type, total_revenue DESC"
+    },
+    {
+      "question": "Show monthly revenue trend by channel.",
+      "sql": "SELECT st.channel,\n       DATE_TRUNC('month', CAST(s.date AS DATE)) AS month_start,\n       ROUND(SUM(s.units_sold * s.price_unit), 2) AS total_revenue\nFROM fmcg_sales AS s\nJOIN dim_store AS st ON s.store_id = st.store_id\nGROUP BY st.channel, DATE_TRUNC('month', CAST(s.date AS DATE))\nORDER BY month_start, total_revenue DESC"
+    },
+    {
+      "question": "Which category had the highest promotional uplift?",
+      "sql": "SELECT p.category,\n       SUM(CASE WHEN s.promotion_flag = 1 THEN s.units_sold ELSE 0 END) AS promo_units,\n       SUM(CASE WHEN s.promotion_flag = 0 THEN s.units_sold ELSE 0 END) AS non_promo_units,\n       ROUND(\n           (\n               SUM(CASE WHEN s.promotion_flag = 1 THEN s.units_sold ELSE 0 END)\n               - SUM(CASE WHEN s.promotion_flag = 0 THEN s.units_sold ELSE 0 END)\n           ) * 1.0\n           / NULLIF(SUM(CASE WHEN s.promotion_flag = 0 THEN s.units_sold ELSE 0 END), 0),\n           4\n       ) AS promotional_uplift_rate\nFROM fmcg_sales AS s\nJOIN dim_product AS p ON s.sku = p.sku\nGROUP BY p.category\nORDER BY promotional_uplift_rate DESC"
+    },
+    {
+      "question": "What is the average units sold by lifecycle stage?",
+      "sql": "SELECT lifecycle_stage,\n       ROUND(AVG(units_sold), 2) AS avg_units_sold\nFROM weekly_modeling_data\nGROUP BY lifecycle_stage\nORDER BY avg_units_sold DESC"
+    }
+  ],
+  "example_questions": [
+    {
+      "label": "Brand ranking",
+      "question": "Compare total revenue across all brands"
+    },
+    {
+      "label": "Promotion impact by channel",
+      "question": "Compare promotion versus non-promotion units sold by channel"
+    },
+    {
+      "label": "Stock depletion by SKU",
+      "question": "What is the stock depletion rate by SKU?"
+    },
+    {
+      "label": "Monthly revenue trend",
+      "question": "Show monthly revenue trend"
+    },
+    {
+      "label": "Category x channel",
+      "question": "Show revenue by category across each channel"
+    },
+    {
+      "label": "Year over year growth",
+      "question": "Show year over year revenue trend"
+    }
+  ],
+  "governance": {
+    "row_policies": [
+      {
+        "name": "region_scope",
+        "grant_key": "region",
+        "anchor_table": "dim_store",
+        "anchor_column": "region",
+        "description": "A regional analyst reads only the stores in the regions they are granted. Every table that can attribute a row to a store is scoped: the ones carrying region filter on it directly, the ones carrying only store_id are scoped through dim_store, so the restriction holds whether or not the query joined the dimension.",
+        "tables": [
+          {
+            "table": "dim_store",
+            "mode": "direct",
+            "key": "region"
+          },
+          {
+            "table": "fact_promotions",
+            "mode": "direct",
+            "key": "region"
+          },
+          {
+            "table": "weekly_modeling_data",
+            "mode": "direct",
+            "key": "region"
+          },
+          {
+            "table": "fmcg_sales",
+            "mode": "semijoin",
+            "key": "store_id",
+            "through": {
+              "table": "dim_store",
+              "column": "store_id",
+              "filter_column": "region"
+            }
+          },
+          {
+            "table": "fact_inventory",
+            "mode": "semijoin",
+            "key": "store_id",
+            "through": {
+              "table": "dim_store",
+              "column": "store_id",
+              "filter_column": "region"
+            }
+          }
+        ]
+      }
+    ],
+    "pii": []
   }
 }
