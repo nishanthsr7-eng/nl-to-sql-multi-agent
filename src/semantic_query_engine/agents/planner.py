@@ -17,7 +17,12 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
-from semantic_query_engine.domain.registry import DimensionRegistry, load_domain_registries
+from semantic_query_engine.domain.registry import (
+    DimensionRegistry,
+    IdentifierRegistry,
+    LanguageProfile,
+    load_domain_registries,
+)
 
 
 class IntentArchetype(str, Enum):
@@ -41,8 +46,8 @@ ARCHETYPE_LABELS: dict[IntentArchetype, str] = {
 
 ARCHETYPE_DESCRIPTIONS: dict[IntentArchetype, str] = {
     IntentArchetype.LOOKUP: (
-        "Single-fact retrieval — explicit entity matching across product, region and time "
-        "attributes to extract a standalone data point."
+        "Single-fact retrieval — explicit entity matching across the domain's "
+        "dimensions and time attributes to extract a standalone data point."
     ),
     IntentArchetype.COMPARATIVE: (
         "Multi-period or multi-entity delta — requires time-series manipulation, window "
@@ -53,7 +58,7 @@ ARCHETYPE_DESCRIPTIONS: dict[IntentArchetype, str] = {
         "transactional boundaries with sorting and cross-entity analysis."
     ),
     IntentArchetype.AMBIGUOUS: (
-        "Insufficient parameters detected — metric, timeframe or product scope is missing. "
+        "Insufficient parameters detected — metric, timeframe or entity scope is missing. "
         "The system triggers a conversational clarification loop rather than guessing."
     ),
 }
@@ -72,49 +77,51 @@ class PlanResult:
 
 
 class PlannerAgent:
-    # ---------------------------------------------------------------------------
-    # Archetype B — Comparative Analysis signals
-    # ---------------------------------------------------------------------------
-    _COMPARATIVE_HINTS = (
-        "compare", "vs", "versus", "growth", "delta",
-        "week-on-week", "month over month", "year over year", "yoy",
-        "highest", "lowest", "top", "rank",
-        "more than", "less than", "better", "worse",
-        "outperform", "underperform", "difference",
-        "increased", "decreased", "improved", "declined",
-        "did last month", "last month campaign",
-        "campaign improve",
-    )
+    """Rule-based intent classification over the domain's own vocabulary.
 
-    # ---------------------------------------------------------------------------
-    # Archetype C — Diagnostic & Pivot signals
-    # ---------------------------------------------------------------------------
-    _DIAGNOSTIC_HINTS = (
-        "which", "benefit", "inventory", "promotion",
-        "category", "join", "across", "impact", "drivers",
-        "breakdown", "split", "by brand", "by channel",
-        "by category", "by pack", "by segment",
-        "benefited most", "saw", "reduction", "during",
-        "trade promotion", "sku hierarchy",
-    )
+    The keyword tuples that used to sit here -- comparative hints, diagnostic
+    hints, metric words, the FMCG clarification menu -- now come from the
+    ``language`` block of the active domain's semantic layer through
+    :class:`LanguageProfile`. They were the single largest reason a second
+    domain could not be added without touching Python, which is the claim
+    Phase 4 task 3 exists to make checkable.
+    """
 
-    def __init__(self, dimensions: DimensionRegistry | None = None):
-        self.dimensions = dimensions or load_domain_registries()[1]
+    def __init__(
+        self,
+        dimensions: DimensionRegistry | None = None,
+        identifiers: IdentifierRegistry | None = None,
+        language: LanguageProfile | None = None,
+    ):
+        registries = load_domain_registries()
+        self.dimensions = dimensions or registries.dimensions
+        self.identifiers = identifiers or registries.identifiers
+        self.language = language or registries.language
+        self._comparative = self.language.hints("comparative_hints")
+        self._diagnostic = self.language.hints("diagnostic_hints")
+        self._vague_openers = self.language.hints("vague_openers")
+        self._grounding = self.language.hints("grounding_keywords")
+        self._scoping_cues = self.language.hints("scoping_cues")
+        self._strong_comparatives = self.language.hints("strong_comparative_hints")
+        self._metric_keywords = self.language.metric_keywords()
+        self._anchor_dimensions = self.language.anchor_dimensions()
+        self._scope_dimensions = self.language.scope_dimensions()
+        self.topic_prompts = self.language.topic_prompts()
 
     def run(self, question: str) -> PlanResult:
         q     = question.strip()
         lower = q.lower()
 
-        entities = {
-            "sku":       self._extract_sku(lower),
-            "region":    self.dimensions.match("region", lower),
-            "timeframe": self._extract_timeframe(lower),
-            "metric":    self._extract_metric(lower),
-            "category":  self.dimensions.match("category", lower),
-            "channel":   self.dimensions.match("channel", lower),
-            "pack_type": self.dimensions.match("pack_type", lower),
-            "brand":     self.dimensions.match("brand", lower),
+        # One key per declared identifier and per declared dimension, so the
+        # extracted entity set is whatever the domain says exists rather than
+        # the eight things the FMCG warehouse happened to have.
+        entities: dict[str, str | None] = {
+            name: self.identifiers.find(name, q) for name in self.identifiers.names()
         }
+        for dimension in self.dimensions.dimensions():
+            entities[dimension] = self.dimensions.match(dimension, lower)
+        entities["timeframe"] = self._extract_timeframe(lower)
+        entities["metric"] = self._extract_metric(lower)
 
         # -----------------------------------------------------------------
         # Archetype D — detect ambiguity first (hard boundary)
@@ -139,16 +146,16 @@ class PlannerAgent:
         #   Must not have open-ended comparative or diagnostic signals.
         #   SKU presence is a strong signal for A regardless of 'last week' etc.
         # -----------------------------------------------------------------
-        has_sku_anchor  = bool(entities["sku"])
-        has_dim_anchor  = bool(entities["category"]) or bool(entities["brand"])
+        has_sku_anchor  = any(entities.get(name) for name in self.identifiers.names())
+        has_dim_anchor  = any(entities.get(dim) for dim in self._anchor_dimensions)
         has_time        = bool(entities["timeframe"])
         has_metric      = bool(entities["metric"])
-        has_comparative = any(h in lower for h in self._COMPARATIVE_HINTS)
-        has_diagnostic  = any(h in lower for h in self._DIAGNOSTIC_HINTS)
+        has_comparative = any(h in lower for h in self._comparative)
+        has_diagnostic  = any(h in lower for h in self._diagnostic)
 
-        # Strong A: SKU explicitly present with a timeframe → always a point lookup
+        # Strong A: an explicit identifier with a timeframe -> a point lookup
         if has_sku_anchor and has_time and not (
-            any(h in lower for h in ("compare", "vs", "versus", "growth", "rank", "highest", "lowest"))
+            any(h in lower for h in self._strong_comparatives)
         ):
             result = PlanResult(
                 intent=IntentArchetype.LOOKUP,
@@ -156,7 +163,8 @@ class PlannerAgent:
                 clarification_prompt=None,
                 entities=entities,
                 reasoning=(
-                    "Archetype A: explicit SKU anchor with timeframe — single-fact retrieval."
+                    "Archetype A: explicit identifier anchor with timeframe — "
+                    "single-fact retrieval."
                 ),
             )
             self._attach_labels(result)
@@ -251,10 +259,14 @@ class PlannerAgent:
     # Entity extractors
     # -----------------------------------------------------------------------
 
-    @staticmethod
-    def _extract_sku(text: str) -> str | None:
-        match = re.search(r"\b([A-Z]{2}-\d{3})\b", text.upper())
-        return match.group(1) if match else None
+    def _extract_sku(self, text: str) -> str | None:
+        """Deprecated -- SKU extraction now goes through :class:`IdentifierRegistry`.
+
+        The pattern itself lives once, in the semantic layer, so the planner, the
+        fallback templates, and the validator all recognise the same identifiers.
+        Prefer ``self.identifiers.find("sku", ...)`` directly.
+        """
+        return self.identifiers.find("sku", text)
 
     @staticmethod
     def _extract_timeframe(text: str) -> str | None:
@@ -268,86 +280,74 @@ class PlannerAgent:
             return "recent_year"
         return None
 
-    @staticmethod
-    def _extract_metric(text: str) -> str | None:
-        if any(k in text for k in ("revenue", "sales", "units")):
-            return "units_or_revenue"
-        if any(k in text for k in ("stock", "depletion", "inventory")):
-            return "stock"
-        if any(k in text for k in ("promotion", "promo", "uplift", "campaign")):
-            return "promotion"
-        if "delivery" in text:
-            return "delivery"
+    def _extract_metric(self, text: str) -> str | None:
+        """Which metric family the question names, in the domain's own words.
+
+        First match wins, and the declaration order in the semantic layer is the
+        priority order -- so "promotion revenue" resolves to the revenue group
+        rather than to the promotion group it also mentions.
+        """
+        for group, words in self._metric_keywords:
+            if any(word in text for word in words):
+                return group
         return None
 
     # -----------------------------------------------------------------------
     # Ambiguity detection
     # -----------------------------------------------------------------------
 
-    @staticmethod
-    def _is_ambiguous(text: str, entities: dict[str, str | None]) -> bool:
-        # Vague openers with no grounding metric
-        vague_openers = ("how did", "how is", "tell me about", "what about")
-        has_grounding_keyword = any(t in text for t in (
-            "revenue", "sales", "units", "stock", "depletion",
-            "inventory", "brand", "category", "channel",
-        ))
-        if any(v in text for v in vague_openers) and not has_grounding_keyword:
-            return True
-
-        # "promotion" mentioned but no concrete metric, timeframe, or product scoping
-        is_promo_metric_only = (entities["metric"] == "promotion" and not any(k in text for k in ("revenue", "sales", "units", "stock", "depletion", "inventory")))
-        
-        if (
-            any(t in text for t in ("promotion", "promo", "campaign"))
-            and (not entities["metric"] or is_promo_metric_only)
-            and not entities["timeframe"]
-            and not entities["sku"]
-            and not any(cue in text for cue in (
-                "compare", "versus", "growth", "highest", "lowest",
-                "which", "by", "across", "breakdown", "split",
-            ))
+    def _is_ambiguous(self, text: str, entities: dict[str, str | None]) -> bool:
+        # A vague opener with nothing in it that the warehouse measures.
+        if any(v in text for v in self._vague_openers) and not any(
+            t in text for t in self._grounding
         ):
             return True
 
+        # A domain topic named with no metric, no timeframe, no identifier and no
+        # cue that the question is about to scope itself ("by region", "compare
+        # ...") -- e.g. a bare "how are promotions doing". The topic's own metric
+        # group does not count as a metric here: naming the topic is what made
+        # the question ambiguous in the first place.
+        for topic in self.topic_prompts:
+            if not topic.matches(text):
+                continue
+            metric = entities.get("metric")
+            topic_is_own_metric = bool(metric) and str(metric) in topic.triggers
+            if (
+                (not metric or topic_is_own_metric)
+                and not entities.get("timeframe")
+                and not any(entities.get(name) for name in self.identifiers.names())
+                and not any(cue in text for cue in self._scoping_cues)
+            ):
+                return True
+
         return False
 
-    @staticmethod
-    def _identify_missing_params(text: str, entities: dict[str, str | None]) -> list[str]:
+    def _identify_missing_params(self, text: str, entities: dict[str, str | None]) -> list[str]:
         missing = []
-        has_metric = any(k in text for k in (
-            "revenue", "sales", "units", "stock", "depletion", "inventory", "promo",
-        ))
-        if not has_metric and not entities["metric"]:
-            missing.append("metric (e.g. revenue, units sold, stock depletion)")
-        if not entities["timeframe"]:
-            missing.append("timeframe (e.g. last week, March 2024, 2023)")
-        has_product_scope = (
-            entities["sku"] or entities["category"]
-            or entities["brand"] or entities["channel"]
+        has_metric = any(word in text for _, words in self._metric_keywords for word in words)
+        if not has_metric and not entities.get("metric"):
+            missing.append(self.language.missing_param_prompt("metric"))
+        if not entities.get("timeframe"):
+            missing.append(self.language.missing_param_prompt("timeframe"))
+        has_scope = any(entities.get(name) for name in self.identifiers.names()) or any(
+            entities.get(dim) for dim in self._scope_dimensions
         )
-        if not has_product_scope:
-            missing.append("product scope (e.g. SKU, brand, or category)")
+        if not has_scope:
+            missing.append(self.language.missing_param_prompt("scope"))
         return missing
 
-    @staticmethod
-    def _build_clarification_prompt(text: str, missing: list[str]) -> str:
-        if any(t in text for t in ("promotion", "promo", "campaign")):
-            return (
-                "Your promotion question needs more detail. Would you like to see:\n"
-                "• Revenue impact — total revenue during vs. outside promotion?\n"
-                "• Inventory depletion — stock reduction rate during the campaign?\n"
-                "• Regional sales comparison — which region responded best?\n\n"
-                "Please re-state with: metric, timeframe, and product/category scope."
-            )
+    def _build_clarification_prompt(self, text: str, missing: list[str]) -> str:
+        for topic in self.topic_prompts:
+            if topic.matches(text) and topic.prompt:
+                return topic.prompt
         if missing:
-            items = "\n".join(f"  • {p}" for p in missing)
+            items = "\n".join(f"  \u2022 {p}" for p in missing)
             return (
                 f"Your question is missing key parameters:\n{items}\n\n"
-                "Example: \"What was the total revenue for the Yogurt category in 2024?\""
+                f"{self.language.clarification_example()}"
             )
-        return (
-            "Please specify: (1) metric — revenue, units sold, or stock depletion; "
-            "(2) timeframe — e.g. last week, March 2024; "
-            "(3) product scope — SKU, brand, or category."
+        return "Please specify: " + "; ".join(
+            self.language.missing_param_prompt(slot)
+            for slot in ("metric", "timeframe", "scope")
         )
