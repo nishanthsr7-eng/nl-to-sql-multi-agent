@@ -16,14 +16,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from semantic_query_engine.core.config import LLMSettings, load_llm_settings
+from semantic_query_engine.core.domains import active_domain
 from semantic_query_engine.core.llm_client import ChatClient, build_client
 from semantic_query_engine.core.logging import get_logger
 from semantic_query_engine.core.schemas import llm_retry, parse_sql_payload
-from semantic_query_engine.domain.registry import MetricRegistry, load_domain_registries
+from semantic_query_engine.core.usage import NO_USAGE, TokenUsage, usage_from_response
+from semantic_query_engine.domain.registry import (
+    DimensionRegistry,
+    IdentifierRegistry,
+    MetricRegistry,
+    load_domain_registries,
+)
 from semantic_query_engine.prompts.sql_generation import (
     REPAIR_ROLE_SUFFIX,
-    SYSTEM_ROLE,
     build_repair_prompt,
+    build_system_role,
     build_user_prompt,
 )
 
@@ -39,6 +46,12 @@ class SQLGenerationResult:
     # deterministic fallback templates use these -- LLM-generated SQL always
     # carries literal values inline, since the model has no binding channel.
     params: list[Any] = field(default_factory=list)
+    # Tokens and cost for the call that produced this SQL. The fallback templates
+    # leave it at zero, which is the true cost of not calling a provider -- so a
+    # rung of the ladder that degraded to templates shows a cost of $0 next to a
+    # ``sql_source`` of "fallback", and the two together say plainly that nothing
+    # was measured.
+    usage: TokenUsage = NO_USAGE
 
 
 class SQLGeneratorAgent:
@@ -48,9 +61,21 @@ class SQLGeneratorAgent:
         self,
         metric_registry: MetricRegistry | None = None,
         client_factory: Callable[[LLMSettings], ChatClient] = build_client,
+        settings: LLMSettings | None = None,
     ):
-        self.metrics = metric_registry or load_domain_registries()[0]
+        registries = load_domain_registries()
+        self._system_role = build_system_role(registries.language)
+        domain = active_domain()
+        self._domain_name = domain.name
+        self._fallback_templates = domain.fallback_templates
+        self.metrics = metric_registry or registries.metrics
+        self.dimensions = registries.dimensions
+        self.identifiers = registries.identifiers
         self._client_factory = client_factory
+        # Resolved once, when the agent is built, rather than on every request --
+        # provider configuration is process-level, so scanning the environment per
+        # question was pure overhead on the hot path.
+        self._settings = settings or load_llm_settings()
 
     def run(
         self,
@@ -59,7 +84,7 @@ class SQLGeneratorAgent:
         intent: str,
         metrics: list[dict] | None = None,
     ) -> SQLGenerationResult:
-        settings = load_llm_settings()
+        settings = self._settings
         if settings.is_enabled:
             try:
                 return self._generate_with_llm(question, schema_context, intent, settings, metrics or [])
@@ -85,7 +110,7 @@ class SQLGeneratorAgent:
         explicitly via ``source`` instead of pretending a repair happened, so the
         orchestrator can stop retrying rather than loop on an identical query.
         """
-        settings = load_llm_settings()
+        settings = self._settings
         if settings.is_enabled:
             try:
                 return self._repair_with_llm(
@@ -119,13 +144,18 @@ class SQLGeneratorAgent:
             temperature=settings.temperature_generation,  # Precision task -- minimise variance
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": SYSTEM_ROLE},
+                {"role": "system", "content": self._system_role},
                 {"role": "user", "content": user_prompt},
             ],
         )
         payload = parse_sql_payload(response.choices[0].message.content or "{}")
         sql = self._clean_sql(payload.sql)
-        return SQLGenerationResult(sql=sql, source="llm", prompt_used=user_prompt)
+        return SQLGenerationResult(
+            sql=sql,
+            source="llm",
+            prompt_used=user_prompt,
+            usage=usage_from_response(response, settings.generator_model, settings.base_url),
+        )
 
     @llm_retry
     def _repair_with_llm(
@@ -148,7 +178,7 @@ class SQLGeneratorAgent:
             temperature=settings.temperature_generation,
             response_format={"type": "json_object"},
             messages=[
-                {"role": "system", "content": SYSTEM_ROLE + REPAIR_ROLE_SUFFIX},
+                {"role": "system", "content": self._system_role + REPAIR_ROLE_SUFFIX},
                 {"role": "user", "content": full_prompt},
             ],
         )
@@ -157,6 +187,7 @@ class SQLGeneratorAgent:
             sql=self._clean_sql(payload.sql),
             source="llm_repair",
             prompt_used=full_prompt,
+            usage=usage_from_response(response, settings.generator_model, settings.base_url),
         )
 
     # -----------------------------------------------------------------------
@@ -164,8 +195,24 @@ class SQLGeneratorAgent:
     # -----------------------------------------------------------------------
 
     def _generate_fallback(self, question: str) -> SQLGenerationResult:
+        # The templates below are written in FMCG tables, so they are gated on
+        # the domain declaring them. Answering an airline question with a query
+        # over ``fmcg_sales`` would either error in the warehouse or -- far worse
+        # -- succeed against a table that happens to exist and be irrelevant.
+        # Empty SQL with a distinct ``source`` is the honest outcome: the
+        # validator rejects it, the run fails visibly, and the eval harness sees
+        # a ``sql_source`` that is neither "llm" nor "fallback", so it can never
+        # be counted as either a measurement or a template score.
+        if self._fallback_templates != "fmcg":
+            return SQLGenerationResult(sql="", source="no_fallback")
         lower = question.lower()
-        ctx = _FallbackContext(question=question, lower=lower, metrics=self.metrics)
+        ctx = _FallbackContext(
+            question=question,
+            lower=lower,
+            metrics=self.metrics,
+            dimensions=self.dimensions,
+            identifiers=self.identifiers,
+        )
         for template in TEMPLATES:
             if template.matches(ctx):
                 return template.render(ctx)
@@ -193,6 +240,12 @@ class _FallbackContext:
     question: str
     lower: str
     metrics: MetricRegistry
+    # Templates resolve entity literals through the registries rather than their
+    # own lookup tables: a template that maps "south" to "PL-South" by hand is a
+    # copy of the semantic layer that can drift away from it, and the validator
+    # would then reject the very filter the template thought it had applied.
+    dimensions: DimensionRegistry
+    identifiers: IdentifierRegistry
 
 
 @dataclass
@@ -200,6 +253,32 @@ class QueryTemplate:
     name: str
     matches: Callable[[_FallbackContext], bool]
     render: Callable[[_FallbackContext], SQLGenerationResult]
+
+
+# Used only when the SKU template fires on a question whose SKU code did not parse
+# -- the template matched on the word "sku", so returning a concrete example row is
+# more useful than an empty result while the repair loop or the user narrows it.
+_DEFAULT_SKU = "MI-006"
+
+
+# The deterministic templates below are written against the *denormalized* column
+# set -- region, channel, brand, category and segment alongside the measures --
+# because that is the vocabulary the question keywords map to. Phase 4 moved those
+# columns into dim_store and dim_product, so the templates read from this
+# star-resolving source instead of from the bare fact.
+#
+# It is a real join through the declared keys, not a shortcut around them: both
+# legs are many-to-one onto a dimension's full grain, so no row is multiplied and
+# every total the templates produced before the star schema is unchanged. Doing
+# it once here keeps fourteen template strings free of join syntax; doing it as a
+# warehouse view would have hidden the join from the validator entirely, which is
+# the opposite of what Phase 4 is for.
+_SALES_STAR = (
+    "(SELECT s.*, p.brand, p.category, p.segment, d.region, d.channel "
+    "FROM fmcg_sales s "
+    "JOIN dim_product p ON s.sku = p.sku "
+    "JOIN dim_store d ON s.store_id = d.store_id) AS fmcg_sales"
+)
 
 
 def _revenue_expr(metrics: MetricRegistry) -> str:
@@ -329,22 +408,15 @@ def _render_lifecycle(ctx: _FallbackContext) -> SQLGenerationResult:
 
 
 def _render_sku_lookup(ctx: _FallbackContext) -> SQLGenerationResult:
-    sku_match = re.search(r"\b([A-Z]{2}-\d{3})\b", ctx.question)
-    sku = sku_match.group(1) if sku_match else "MI-006"
+    sku = ctx.identifiers.find("sku", ctx.question) or _DEFAULT_SKU
 
     filters = ["sku = ?"]
     params: list[Any] = [sku]
 
-    region_map = {
-        "pl-north": "PL-North", "north": "PL-North",
-        "pl-south": "PL-South", "south": "PL-South",
-        "pl-central": "PL-Central", "central": "PL-Central",
-    }
-    for key, val in region_map.items():
-        if key in ctx.lower:
-            filters.append("region = ?")
-            params.append(val)
-            break
+    region = ctx.dimensions.match("region", ctx.lower)
+    if region:
+        filters.append("region = ?")
+        params.append(region)
 
     if "last week of january 2024" in ctx.lower:
         filters.append("date BETWEEN ? AND ?")
@@ -356,7 +428,7 @@ def _render_sku_lookup(ctx: _FallbackContext) -> SQLGenerationResult:
     sql = (
         "SELECT region, channel, SUM(units_sold) AS total_units, "
         f"{_revenue_expr(ctx.metrics)} AS total_revenue "
-        f"FROM fmcg_sales WHERE {' AND '.join(filters)} "
+        f"FROM {_SALES_STAR} WHERE {' AND '.join(filters)} "
         "GROUP BY region, channel ORDER BY total_units DESC"
     )
     return SQLGenerationResult(sql=sql, source="fallback", params=params)
@@ -367,7 +439,7 @@ def _render_yoy(ctx: _FallbackContext) -> SQLGenerationResult:
         f"SELECT year, {_revenue_expr(ctx.metrics)} AS total_revenue, "
         "SUM(units_sold) AS total_units "
         "FROM (SELECT EXTRACT(YEAR FROM CAST(date AS DATE)) AS year, "
-        "units_sold, price_unit FROM fmcg_sales) t "
+        f"units_sold, price_unit FROM {_SALES_STAR}) t "
         "GROUP BY year ORDER BY year"
     )
     return SQLGenerationResult(sql=sql, source="fallback")
@@ -383,7 +455,7 @@ def _render_promo(ctx: _FallbackContext) -> SQLGenerationResult:
         f"SELECT {gb_select}promotion_flag, "
         "SUM(units_sold) AS total_units, "
         f"{_revenue_expr(ctx.metrics)} AS total_revenue "
-        f"FROM fmcg_sales{year_where} {gb_clause}"
+        f"FROM {_SALES_STAR}{year_where} {gb_clause}"
         f"{ob_clause}"
     )
     return SQLGenerationResult(sql=sql, source="fallback")
@@ -398,7 +470,7 @@ def _render_stock(ctx: _FallbackContext) -> SQLGenerationResult:
         f"SELECT {gb_select}{_stock_expr(ctx.metrics)} AS stock_depletion_rate, "
         "SUM(stock_available) AS total_stock, "
         "SUM(units_sold) AS total_units_sold "
-        f"FROM fmcg_sales{year_where} {gb_clause}"
+        f"FROM {_SALES_STAR}{year_where} {gb_clause}"
         "ORDER BY stock_depletion_rate DESC"
     )
     return SQLGenerationResult(sql=sql, source="fallback")
@@ -420,7 +492,7 @@ def _render_wow(ctx: _FallbackContext) -> SQLGenerationResult:
         "WITH weekly AS ("
         f"SELECT {gb_select}DATE_TRUNC('week', CAST(date AS DATE)) AS week_start, "
         "SUM(units_sold) AS units "
-        f"FROM fmcg_sales WHERE {date_filter} "
+        f"FROM {_SALES_STAR} WHERE {date_filter} "
         f"GROUP BY {gb_clause}DATE_TRUNC('week', CAST(date AS DATE))"
         "), growth AS ("
         f"SELECT {gb_select}week_start, units, "
@@ -443,7 +515,7 @@ def _render_trend(ctx: _FallbackContext) -> SQLGenerationResult:
         f"SELECT {gb_select}DATE_TRUNC('month', CAST(date AS DATE)) AS month_start, "
         f"{_revenue_expr(ctx.metrics)} AS total_revenue, "
         "SUM(units_sold) AS total_units "
-        f"FROM fmcg_sales{year_where} GROUP BY {gb_clause}DATE_TRUNC('month', CAST(date AS DATE)) "
+        f"FROM {_SALES_STAR}{year_where} GROUP BY {gb_clause}DATE_TRUNC('month', CAST(date AS DATE)) "
         f"ORDER BY month_start{', ' + group_by if group_by else ''}"
     )
     return SQLGenerationResult(sql=sql, source="fallback")
@@ -455,7 +527,7 @@ def _render_cross_tab(dim_a: str, dim_b: str) -> Callable[[_FallbackContext], SQ
         metric_col, metric_alias = _detect_metric_expr(ctx.lower, ctx.metrics)
         sql = (
             f"SELECT {dim_a}, {dim_b}, {metric_col} AS {metric_alias} "
-            f"FROM fmcg_sales{year_where} "
+            f"FROM {_SALES_STAR}{year_where} "
             f"GROUP BY {dim_a}, {dim_b} ORDER BY {dim_a}, {metric_alias} DESC"
         )
         return SQLGenerationResult(sql=sql, source="fallback")
@@ -470,7 +542,7 @@ def _render_single_dim(dim: str, limit: int | None = None) -> Callable[[_Fallbac
         limit_clause = f" LIMIT {limit}" if limit else ""
         sql = (
             f"SELECT {dim}, {metric_col} AS {metric_alias} "
-            f"FROM fmcg_sales{year_where} "
+            f"FROM {_SALES_STAR}{year_where} "
             f"GROUP BY {dim} ORDER BY {metric_alias} DESC{limit_clause}"
         )
         return SQLGenerationResult(sql=sql, source="fallback")
@@ -482,13 +554,13 @@ def _render_revenue(ctx: _FallbackContext) -> SQLGenerationResult:
     group_by = _detect_group_by(ctx.lower)
     year_where = _year_where(ctx.lower)
     if not group_by:
-        sql = f"SELECT {_revenue_expr(ctx.metrics)} AS total_revenue FROM fmcg_sales{year_where}"
+        sql = f"SELECT {_revenue_expr(ctx.metrics)} AS total_revenue FROM {_SALES_STAR}{year_where}"
         return SQLGenerationResult(sql=sql, source="fallback")
     secondary = _detect_secondary_dim(ctx.lower, group_by)
     group_cols = f"{group_by}, {secondary}" if secondary else group_by
     sql = (
         f"SELECT {group_cols}, {_revenue_expr(ctx.metrics)} AS total_revenue "
-        f"FROM fmcg_sales{year_where} GROUP BY {group_cols} ORDER BY total_revenue DESC LIMIT 20"
+        f"FROM {_SALES_STAR}{year_where} GROUP BY {group_cols} ORDER BY total_revenue DESC LIMIT 20"
     )
     return SQLGenerationResult(sql=sql, source="fallback")
 
@@ -498,13 +570,13 @@ def _render_generic(ctx: _FallbackContext) -> SQLGenerationResult:
     year_where = _year_where(ctx.lower)
     metric_col, metric_alias = _detect_metric_expr(ctx.lower, ctx.metrics)
     if not group_by:
-        sql = f"SELECT {metric_col} AS {metric_alias} FROM fmcg_sales{year_where}"
+        sql = f"SELECT {metric_col} AS {metric_alias} FROM {_SALES_STAR}{year_where}"
         return SQLGenerationResult(sql=sql, source="fallback")
     secondary = _detect_secondary_dim(ctx.lower, group_by)
     group_cols = f"{group_by}, {secondary}" if secondary else group_by
     sql = (
         f"SELECT {group_cols}, {metric_col} AS {metric_alias} "
-        f"FROM fmcg_sales{year_where} GROUP BY {group_cols} ORDER BY {metric_alias} DESC LIMIT 20"
+        f"FROM {_SALES_STAR}{year_where} GROUP BY {group_cols} ORDER BY {metric_alias} DESC LIMIT 20"
     )
     return SQLGenerationResult(sql=sql, source="fallback")
 
