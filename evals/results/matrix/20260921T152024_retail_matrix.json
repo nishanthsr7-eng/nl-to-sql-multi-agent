@@ -1,0 +1,73 @@
+{
+  "domain": "retail",
+  "suite": "gold",
+  "baseline": "full",
+  "started_at": "2026-09-21T15:20:24.560318+00:00",
+  "entries": [
+    {
+      "label": "sqe-coder",
+      "generator_model": "sqe-coder",
+      "provider": "openai",
+      "note": "qwen2.5-coder:7b. The default, and the model every published number in this repo was produced with.",
+      "cases": 127,
+      "execution_accuracy": 59.8,
+      "value_accuracy": 53.5,
+      "clarification_rate": 5.5,
+      "first_attempt_rejection_rate": 13.1,
+      "repair_success_rate": 38.9,
+      "latency_p50_ms": 10597.7,
+      "latency_p95_ms": 15096.0,
+      "total_tokens": 600454,
+      "cost_usd": 0.0,
+      "cost_per_query_usd": 0.0,
+      "fallback_share": 0.0,
+      "disqualified": ""
+    },
+    {
+      "label": "sqe-deepseek",
+      "generator_model": "sqe-deepseek",
+      "provider": "openai",
+      "note": "deepseek-coder-v2:lite, a mixture-of-experts code model: more parameters, fewer active per token.",
+      "cases": 127,
+      "execution_accuracy": 52.8,
+      "value_accuracy": 49.6,
+      "clarification_rate": 5.5,
+      "first_attempt_rejection_rate": 18.2,
+      "repair_success_rate": 20.0,
+      "latency_p50_ms": 19042.2,
+      "latency_p95_ms": 35018.7,
+      "total_tokens": 752799,
+      "cost_usd": 0.0,
+      "cost_per_query_usd": 0.0,
+      "fallback_share": 0.0,
+      "disqualified": ""
+    },
+    {
+      "label": "sqe-mistral",
+      "generator_model": "sqe-mistral",
+      "provider": "openai",
+      "note": "mistral:latest, a general instruct model rather than a code-specialised one.",
+      "cases": 127,
+      "execution_accuracy": 49.6,
+      "value_accuracy": 43.3,
+      "clarification_rate": 5.5,
+      "first_attempt_rejection_rate": 35.8,
+      "repair_success_rate": 26.5,
+      "latency_p50_ms": 13349.5,
+      "latency_p95_ms": 33969.9,
+      "total_tokens": 1052374,
+      "cost_usd": 0.0,
+      "cost_per_query_usd": 0.0,
+      "fallback_share": 0.0,
+      "disqualified": ""
+    }
+  ],
+  "recommendation": "sqe-coder",
+  "reasoning": "sqe-coder is both the most accurate (59.8%) and the cheapest of the models within 2pp of it, at $0.000000 per query.",
+  "caveats": [
+    "One run per model over 137 cases. evals/variance.py measures a run-to-run spread on this suite, so a gap smaller than that spread is not a result -- it is noise with a decimal point.",
+    "Prices are the recorded constants in core/usage.py at the time of the run, not a live feed.",
+    "Every model ran the same pipeline, prompts, semantic layer and gold set, which is what makes the rows comparable to each other and not to a published benchmark.",
+    "Retrieval was pinned across every row to nomic-embed-text at http://localhost:11434/v1, so the generator is the only thing that varies between rows. A provider with no embeddings endpoint would otherwise have retrieved by keyword while a local row retrieved by vector."
+  ]
+}

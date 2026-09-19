@@ -1,0 +1,1456 @@
+{
+  "suite": "gold",
+  "baseline": "semantic",
+  "started_at": "2026-09-20T13:11:35.565940+00:00",
+  "duration_seconds": 277.9,
+  "provider": "openai",
+  "generator_model": "sqe-coder",
+  "ablation": {
+    "use_semantic_layer": true,
+    "use_validator": false,
+    "max_repair_attempts": 0
+  },
+  "records": [
+    {
+      "case_id": "air_a_flights_2024",
+      "archetype": "descriptive_lookup",
+      "difficulty": "easy",
+      "sql_features": [
+        "aggregate",
+        "multi_filter",
+        "date_arithmetic"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "clarification",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "expected an answer, got clarification (): ",
+      "sql": "",
+      "row_count": 0,
+      "latency_ms": 0.5,
+      "narrative": "",
+      "key_metric": "",
+      "result_sample": [],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": false,
+      "sql_source": "",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "calls": 0,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_a_on_time_rate_overall",
+      "archetype": "descriptive_lookup",
+      "difficulty": "easy",
+      "sql_features": [
+        "aggregate",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [
+        "dirty_data",
+        "null_measure"
+      ],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT ROUND(SUM(CASE WHEN arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0 / COUNT(arrival_delay_minutes), 4) AS on_time_rate FROM fact_flights WHERE cancelled_flag = 0",
+      "row_count": 1,
+      "latency_ms": 9964.6,
+      "narrative": "The overall on-time rate is **65.69%**.",
+      "key_metric": "65.69% On-Time Rate",
+      "result_sample": [
+        {
+          "on_time_rate": 0.6569
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3939,
+        "completion_tokens": 115,
+        "total_tokens": 4054,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_a_passengers_by_carrier",
+      "archetype": "descriptive_lookup",
+      "difficulty": "easy",
+      "sql_features": [
+        "aggregate",
+        "join"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "missing required column(s): ['passengers']",
+      "sql": "SELECT c.carrier_name, SUM(f.passengers) AS total_passengers FROM fact_flights AS f JOIN dim_carrier AS c ON f.carrier_code = c.carrier_code GROUP BY c.carrier_name ORDER BY total_passengers DESC",
+      "row_count": 6,
+      "latency_ms": 11522.1,
+      "narrative": "Northvale Air carried the most passengers with **1.45M**, followed closely by Altus Airlines with **1.29M**. The top three carriers together accounted for **40.6M** passengers, while the bottom three carried a combined total of **2.3M**.",
+      "key_metric": "1.45M Total Passengers - Northvale Air",
+      "result_sample": [
+        {
+          "carrier_name": "Northvale Air",
+          "total_passengers": 1452691.0
+        },
+        {
+          "carrier_name": "Altus Airlines",
+          "total_passengers": 1292944.0
+        },
+        {
+          "carrier_name": "Jetterra",
+          "total_passengers": 1051937.0
+        },
+        {
+          "carrier_name": "BlueQuay",
+          "total_passengers": 825257.0
+        },
+        {
+          "carrier_name": "Swiftwing",
+          "total_passengers": 815644.0
+        },
+        {
+          "carrier_name": "Regia Connect",
+          "total_passengers": 356934.0
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3979,
+        "completion_tokens": 178,
+        "total_tokens": 4157,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_a_revenue_2023",
+      "archetype": "descriptive_lookup",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "multi_filter",
+        "date_arithmetic"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT SUM(passengers * fare_eur) AS passenger_revenue FROM fact_flights WHERE cancelled_flag = 0 AND CAST(flight_date AS DATE) BETWEEN DATE '2023-01-01' AND DATE '2023-12-31'",
+      "row_count": 1,
+      "latency_ms": 10209.2,
+      "narrative": "Total passenger revenue in 2023 was **\u00a3325.4M**.",
+      "key_metric": "\u00a3325.4M Total Passenger Revenue",
+      "result_sample": [
+        {
+          "passenger_revenue": 325363508.8400002
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3900,
+        "completion_tokens": 129,
+        "total_tokens": 4029,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_a_flights_from_lhr",
+      "archetype": "descriptive_lookup",
+      "difficulty": "easy",
+      "sql_features": [
+        "aggregate",
+        "multi_filter",
+        "date_arithmetic"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "missing required column(s): ['flights']",
+      "sql": "SELECT COUNT(*) AS flights_departed FROM fact_flights AS f JOIN dim_airport AS a ON f.origin_airport = a.airport_code WHERE a.city = 'London' AND f.flight_date BETWEEN DATE '2024-01-01' AND DATE '2024-12-31'",
+      "row_count": 1,
+      "latency_ms": 10379.6,
+      "narrative": "In 2024, **1,451 flights** departed from London Heathrow Airport.",
+      "key_metric": "1,451 Flights Departed",
+      "result_sample": [
+        {
+          "flights_departed": 1451
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3855,
+        "completion_tokens": 140,
+        "total_tokens": 3995,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_a_avg_delay_overall",
+      "archetype": "descriptive_lookup",
+      "difficulty": "easy",
+      "sql_features": [
+        "aggregate"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "missing required column(s): ['avg_arrival_delay']",
+      "sql": "SELECT AVG(arrival_delay_minutes) AS average_arrival_delay FROM fact_flights WHERE cancelled_flag = 0",
+      "row_count": 1,
+      "latency_ms": 8641.0,
+      "narrative": "The average arrival delay for non-cancelled flights is **15 minutes**.",
+      "key_metric": "15 Minutes Average Arrival Delay",
+      "result_sample": [
+        {
+          "average_arrival_delay": 15.061005168939637
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3837,
+        "completion_tokens": 84,
+        "total_tokens": 3921,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_b_on_time_by_carrier",
+      "archetype": "comparative_analysis",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT c.carrier_name, ROUND(SUM(CASE WHEN f.arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0 / COUNT(f.arrival_delay_minutes), 4) AS on_time_rate FROM fact_flights AS f JOIN dim_carrier AS c ON f.carrier_code = c.carrier_code WHERE f.cancelled_flag = 0 GROUP BY c.carrier_name ORDER BY on_time_rate DESC",
+      "row_count": 6,
+      "latency_ms": 11547.6,
+      "narrative": "Altus Airlines leads with a **73.36%** on-time rate, followed closely by BlueQuay at **72.67%**. Northvale Air and Swiftwing lag behind with **72.51%** and **60.14%** respectively.",
+      "key_metric": "Altus Airlines 73.36% On-Time Rate",
+      "result_sample": [
+        {
+          "carrier_name": "Altus Airlines",
+          "on_time_rate": 0.7336
+        },
+        {
+          "carrier_name": "BlueQuay",
+          "on_time_rate": 0.7267
+        },
+        {
+          "carrier_name": "Northvale Air",
+          "on_time_rate": 0.7251
+        },
+        {
+          "carrier_name": "Swiftwing",
+          "on_time_rate": 0.6014
+        },
+        {
+          "carrier_name": "Jetterra",
+          "on_time_rate": 0.5967
+        },
+        {
+          "carrier_name": "Regia Connect",
+          "on_time_rate": 0.5025
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3948,
+        "completion_tokens": 224,
+        "total_tokens": 4172,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_b_load_factor_by_service_model",
+      "archetype": "comparative_analysis",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT c.service_model, ROUND(SUM(f.passengers) * 1.0 / SUM(f.seats), 4) AS load_factor FROM fact_flights AS f JOIN dim_carrier AS c ON f.carrier_code = c.carrier_code WHERE f.cancelled_flag = 0 GROUP BY c.service_model ORDER BY load_factor DESC",
+      "row_count": 3,
+      "latency_ms": 11163.8,
+      "narrative": "The **Regional** service model has the highest load factor at **0.8402**, followed closely by **LowCost** at **0.8316**. **FullService** has the lowest load factor at **0.8297**.",
+      "key_metric": "0.8402 Load Factor - Regional",
+      "result_sample": [
+        {
+          "service_model": "Regional",
+          "load_factor": 0.8402
+        },
+        {
+          "service_model": "LowCost",
+          "load_factor": 0.8316
+        },
+        {
+          "service_model": "FullService",
+          "load_factor": 0.8297
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3921,
+        "completion_tokens": 189,
+        "total_tokens": 4110,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_b_monthly_on_time_delta_2024",
+      "archetype": "comparative_analysis",
+      "difficulty": "hard",
+      "sql_features": [
+        "aggregate",
+        "cte",
+        "window_fn",
+        "date_arithmetic",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": false,
+      "message": "row 0 (ordered), column 'delta': expected None, got nan",
+      "sql": "WITH monthly AS (\n    SELECT DATE_TRUNC('month', CAST(f.flight_date AS DATE)) AS month_start,\n           SUM(CASE WHEN f.arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0\n               / COUNT(f.arrival_delay_minutes) AS on_time_rate\n    FROM fact_flights AS f\n    WHERE f.cancelled_flag = 0\n      AND CAST(f.flight_date AS DATE) BETWEEN DATE '2024-01-01' AND DATE '2024-12-31'\n    GROUP BY DATE_TRUNC('month', CAST(f.flight_date AS DATE))\n)\nSELECT month_start,\n       ROUND(on_time_rate, 4) AS on_time_rate,\n       ROUND(on_time_rate - LAG(on_time_rate) OVER (ORDER BY month_start), 4) AS delta\nFROM monthly\nORDER BY month_start",
+      "row_count": 12,
+      "latency_ms": 14274.2,
+      "narrative": "The on-time rate for flights in 2024 fluctuated, with a slight increase from **66.85%** in January to **62.74%** in December.",
+      "key_metric": "On-Time Rate Declined by 3.35% in December.",
+      "result_sample": [
+        {
+          "month_start": "2024-01-01T00:00:00",
+          "on_time_rate": 0.6685,
+          "delta": NaN
+        },
+        {
+          "month_start": "2024-02-01T00:00:00",
+          "on_time_rate": 0.6578,
+          "delta": -0.0107
+        },
+        {
+          "month_start": "2024-03-01T00:00:00",
+          "on_time_rate": 0.6692,
+          "delta": 0.0113
+        },
+        {
+          "month_start": "2024-04-01T00:00:00",
+          "on_time_rate": 0.6572,
+          "delta": -0.012
+        },
+        {
+          "month_start": "2024-05-01T00:00:00",
+          "on_time_rate": 0.6478,
+          "delta": -0.0094
+        },
+        {
+          "month_start": "2024-06-01T00:00:00",
+          "on_time_rate": 0.6572,
+          "delta": 0.0095
+        },
+        {
+          "month_start": "2024-07-01T00:00:00",
+          "on_time_rate": 0.6728,
+          "delta": 0.0156
+        },
+        {
+          "month_start": "2024-08-01T00:00:00",
+          "on_time_rate": 0.6507,
+          "delta": -0.0221
+        },
+        {
+          "month_start": "2024-09-01T00:00:00",
+          "on_time_rate": 0.6553,
+          "delta": 0.0046
+        },
+        {
+          "month_start": "2024-10-01T00:00:00",
+          "on_time_rate": 0.6646,
+          "delta": 0.0093
+        },
+        {
+          "month_start": "2024-11-01T00:00:00",
+          "on_time_rate": 0.6609,
+          "delta": -0.0037
+        },
+        {
+          "month_start": "2024-12-01T00:00:00",
+          "on_time_rate": 0.6274,
+          "delta": -0.0335
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 4487,
+        "completion_tokens": 312,
+        "total_tokens": 4799,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_b_year_over_year_passengers",
+      "archetype": "comparative_analysis",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "date_arithmetic"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "missing required column(s): ['flight_year', 'passengers']",
+      "sql": "WITH yearly_passengers AS ( SELECT DATE_TRUNC('year', CAST(f.flight_date AS DATE)) AS year, SUM(f.passengers) AS total_passengers FROM fact_flights AS f WHERE f.cancelled_flag = 0 GROUP BY DATE_TRUNC('year', CAST(f.flight_date AS DATE)) ) SELECT year, total_passengers, LAG(total_passengers) OVER (ORDER BY year) AS previous_year_passengers FROM yearly_passengers WHERE year IN (DATE '2023-01-01', DATE '2024-01-01') ORDER BY year",
+      "row_count": 2,
+      "latency_ms": 12656.1,
+      "narrative": "Passenger numbers increased from **2.9M** in 2023 to **2.9M** in 2024, showing a slight uptick.",
+      "key_metric": "2.9M Passengers Carried - 2024",
+      "result_sample": [
+        {
+          "year": "2023-01-01T00:00:00",
+          "total_passengers": 2890469.0,
+          "previous_year_passengers": NaN
+        },
+        {
+          "year": "2024-01-01T00:00:00",
+          "total_passengers": 2903632.0,
+          "previous_year_passengers": 2890469.0
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3956,
+        "completion_tokens": 231,
+        "total_tokens": 4187,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_b_busiest_routes_2024",
+      "archetype": "comparative_analysis",
+      "difficulty": "hard",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "multi_filter",
+        "ordering",
+        "date_arithmetic"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT o.city AS origin_city, d.city AS destination_city, SUM(f.passengers) AS passengers FROM fact_flights AS f JOIN dim_airport AS o ON f.origin_airport = o.airport_code JOIN dim_airport AS d ON f.destination_airport = d.airport_code WHERE f.cancelled_flag = 0 AND CAST(f.flight_date AS DATE) BETWEEN DATE '2024-01-01' AND DATE '2024-12-31' GROUP BY o.city, d.city ORDER BY passengers DESC LIMIT 5",
+      "row_count": 5,
+      "latency_ms": 12801.9,
+      "narrative": "In 2024, the top five routes by passenger volume were Athens to Rome, Frankfurt to Paris, Munich to London, Paris to London, and Rome to London, with **27,306** passengers on the Athens to Rome route leading the pack.",
+      "key_metric": "27,306 Passengers - Athens to Rome",
+      "result_sample": [
+        {
+          "origin_city": "Athens",
+          "destination_city": "Rome",
+          "passengers": 27306.0
+        },
+        {
+          "origin_city": "Frankfurt",
+          "destination_city": "Paris",
+          "passengers": 27154.0
+        },
+        {
+          "origin_city": "Munich",
+          "destination_city": "London",
+          "passengers": 26121.0
+        },
+        {
+          "origin_city": "Paris",
+          "destination_city": "London",
+          "passengers": 25505.0
+        },
+        {
+          "origin_city": "Rome",
+          "destination_city": "London",
+          "passengers": 25349.0
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 4049,
+        "completion_tokens": 246,
+        "total_tokens": 4295,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_b_worst_delay_airport",
+      "archetype": "comparative_analysis",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ordering"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "missing required column(s): ['airport_code']",
+      "sql": "SELECT a.city, AVG(f.arrival_delay_minutes) AS avg_arrival_delay FROM fact_flights AS f JOIN dim_airport AS a ON f.origin_airport = a.airport_code WHERE f.cancelled_flag = 0 GROUP BY a.city ORDER BY avg_arrival_delay DESC LIMIT 1",
+      "row_count": 1,
+      "latency_ms": 10574.5,
+      "narrative": "London has the highest average arrival delay with **17.9 minutes**.",
+      "key_metric": "17.9 Minutes Average Arrival Delay - London",
+      "result_sample": [
+        {
+          "city": "London",
+          "avg_arrival_delay": 17.92168674698795
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3879,
+        "completion_tokens": 126,
+        "total_tokens": 4005,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_on_time_by_alliance_and_season",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "hard",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT c.alliance,\n       dd.season,\n       ROUND(SUM(CASE WHEN f.arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0\n             / COUNT(f.arrival_delay_minutes), 4) AS on_time_rate\nFROM fact_flights AS f\nJOIN dim_carrier AS c ON f.carrier_code = c.carrier_code\nJOIN dim_date AS dd ON f.flight_date = dd.flight_date\nWHERE f.cancelled_flag = 0\nGROUP BY c.alliance, dd.season\nORDER BY c.alliance, dd.season",
+      "row_count": 12,
+      "latency_ms": 12247.5,
+      "narrative": "Meridian alliance had the highest on-time rate across all seasons, with **Skyway** following closely. Unaligned alliance had the lowest on-time rate.",
+      "key_metric": "Skyway outperformed Unaligned by 1.3 percentage points.",
+      "result_sample": [
+        {
+          "alliance": "Meridian",
+          "season": "Autumn",
+          "on_time_rate": 0.6311
+        },
+        {
+          "alliance": "Meridian",
+          "season": "Spring",
+          "on_time_rate": 0.6307
+        },
+        {
+          "alliance": "Meridian",
+          "season": "Summer",
+          "on_time_rate": 0.6126
+        },
+        {
+          "alliance": "Meridian",
+          "season": "Winter",
+          "on_time_rate": 0.6182
+        },
+        {
+          "alliance": "Skyway",
+          "season": "Autumn",
+          "on_time_rate": 0.735
+        },
+        {
+          "alliance": "Skyway",
+          "season": "Spring",
+          "on_time_rate": 0.7212
+        },
+        {
+          "alliance": "Skyway",
+          "season": "Summer",
+          "on_time_rate": 0.7363
+        },
+        {
+          "alliance": "Skyway",
+          "season": "Winter",
+          "on_time_rate": 0.7236
+        },
+        {
+          "alliance": "Unaligned",
+          "season": "Autumn",
+          "on_time_rate": 0.5959
+        },
+        {
+          "alliance": "Unaligned",
+          "season": "Spring",
+          "on_time_rate": 0.6022
+        },
+        {
+          "alliance": "Unaligned",
+          "season": "Summer",
+          "on_time_rate": 0.5988
+        },
+        {
+          "alliance": "Unaligned",
+          "season": "Winter",
+          "on_time_rate": 0.5982
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 4137,
+        "completion_tokens": 212,
+        "total_tokens": 4349,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_cancellation_by_hub_size",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio",
+        "ordering"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": false,
+      "message": "row count differs: reference 4, answer 1",
+      "sql": "SELECT a.hub_size, ROUND(SUM(f.cancelled_flag) * 1.0 / COUNT(*), 4) AS cancellation_rate FROM fact_flights AS f JOIN dim_airport AS a ON f.origin_airport = a.airport_code GROUP BY a.hub_size ORDER BY cancellation_rate DESC LIMIT 1",
+      "row_count": 1,
+      "latency_ms": 10636.1,
+      "narrative": "The **small_hub** has the highest cancellation rate at **1.09%**.",
+      "key_metric": "1.09% Cancellation Rate - Small Hub",
+      "result_sample": [
+        {
+          "hub_size": "small_hub",
+          "cancellation_rate": 0.0109
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3834,
+        "completion_tokens": 135,
+        "total_tokens": 3969,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_holiday_effect",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT dd.is_holiday,\n       ROUND(SUM(CASE WHEN f.arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0\n             / COUNT(f.arrival_delay_minutes), 4) AS on_time_rate\nFROM fact_flights AS f\nJOIN dim_date AS dd ON f.flight_date = dd.flight_date\nWHERE f.cancelled_flag = 0\nGROUP BY dd.is_holiday\nORDER BY dd.is_holiday",
+      "row_count": 2,
+      "latency_ms": 11899.1,
+      "narrative": "The on-time rate is significantly worse on public holidays, with only **44%** on average compared to **66%** on non-holidays.",
+      "key_metric": "On-time Rate on Public Holidays: **44%**",
+      "result_sample": [
+        {
+          "is_holiday": 0,
+          "on_time_rate": 0.6624
+        },
+        {
+          "is_holiday": 1,
+          "on_time_rate": 0.4397
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3886,
+        "completion_tokens": 204,
+        "total_tokens": 4090,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_load_factor_by_body_type",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT ac.body_type, ROUND(SUM(f.passengers) * 1.0 / SUM(f.seats), 4) AS load_factor FROM fact_flights AS f JOIN dim_aircraft AS ac ON f.tail_number = ac.tail_number AND f.flight_date >= ac.valid_from AND f.flight_date < ac.valid_to WHERE f.cancelled_flag = 0 GROUP BY ac.body_type ORDER BY load_factor DESC",
+      "row_count": 3,
+      "latency_ms": 12082.2,
+      "narrative": "The **Regional** aircraft had the highest load factor at **0.8402**, followed closely by **Narrowbody** at **0.8313**. **Widebody** aircraft had the lowest load factor at **0.8281**.",
+      "key_metric": "0.8402 Load Factor - Regional",
+      "result_sample": [
+        {
+          "body_type": "Regional",
+          "load_factor": 0.8402
+        },
+        {
+          "body_type": "Narrowbody",
+          "load_factor": 0.8313
+        },
+        {
+          "body_type": "Widebody",
+          "load_factor": 0.8281
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 4068,
+        "completion_tokens": 206,
+        "total_tokens": 4274,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_fuel_cost_per_seat_km_by_type",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "hard",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "cte",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [
+        "grain_trap"
+      ],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "WITH flown AS (\n    SELECT f.tail_number,\n           SUM(f.seats * f.distance_km) AS seat_km\n    FROM fact_flights AS f\n    WHERE f.cancelled_flag = 0\n    GROUP BY f.tail_number\n), burned AS (\n    SELECT u.tail_number,\n           SUM(u.fuel_cost_eur) AS fuel_cost\n    FROM fact_fuel AS u\n    GROUP BY u.tail_number\n)\nSELECT ac.aircraft_type,\n       ROUND(SUM(burned.fuel_cost) / NULLIF(SUM(flown.seat_km), 0), 6) AS fuel_cost_per_seat_km\nFROM flown\nJOIN burned ON flown.tail_number = burned.tail_number\nJOIN dim_aircraft AS ac ON flown.tail_number = ac.tail_number\n                       AND ac.valid_to = DATE '9999-12-31'\nGROUP BY ac.aircraft_type\nORDER BY fuel_cost_per_seat_km",
+      "row_count": 6,
+      "latency_ms": 15010.7,
+      "narrative": "The **A350-900** and **B787-9** have the lowest fuel cost per seat-kilometre, at **0.0287** and **0.0288** respectively. The **E190** has the highest, at **0.0292**.",
+      "key_metric": "A350-900 and B787-9 have the lowest fuel cost per seat-kilometre at \u00a30.0287 and \u00a30.0288 respectively.",
+      "result_sample": [
+        {
+          "aircraft_type": "A350-900",
+          "fuel_cost_per_seat_km": 0.028721
+        },
+        {
+          "aircraft_type": "B787-9",
+          "fuel_cost_per_seat_km": 0.028761
+        },
+        {
+          "aircraft_type": "A321neo",
+          "fuel_cost_per_seat_km": 0.028845
+        },
+        {
+          "aircraft_type": "B737-800",
+          "fuel_cost_per_seat_km": 0.028899
+        },
+        {
+          "aircraft_type": "A320neo",
+          "fuel_cost_per_seat_km": 0.028928
+        },
+        {
+          "aircraft_type": "E190",
+          "fuel_cost_per_seat_km": 0.029228
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3686,
+        "completion_tokens": 379,
+        "total_tokens": 4065,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_delay_by_manufacturer",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT ac.manufacturer, ROUND(AVG(f.arrival_delay_minutes), 2) AS avg_arrival_delay FROM fact_flights AS f JOIN dim_aircraft AS ac ON f.tail_number = ac.tail_number AND f.flight_date >= ac.valid_from AND f.flight_date < ac.valid_to WHERE f.cancelled_flag = 0 GROUP BY ac.manufacturer ORDER BY avg_arrival_delay DESC",
+      "row_count": 3,
+      "latency_ms": 12008.5,
+      "narrative": "Embraer has the highest average arrival delay at **22.28 minutes**, followed closely by Airbus at **14.16 minutes**. Boeing has the lowest at **13.82 minutes**.",
+      "key_metric": "Embraer with an average arrival delay of **22.28 minutes**.",
+      "result_sample": [
+        {
+          "manufacturer": "Embraer",
+          "avg_arrival_delay": 22.28
+        },
+        {
+          "manufacturer": "Airbus",
+          "avg_arrival_delay": 14.16
+        },
+        {
+          "manufacturer": "Boeing",
+          "avg_arrival_delay": 13.82
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3879,
+        "completion_tokens": 198,
+        "total_tokens": 4077,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_revenue_by_region_2024",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "multi_filter",
+        "date_arithmetic"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT a.region, ROUND(SUM(f.passengers * f.fare_eur), 2) AS passenger_revenue FROM fact_flights AS f JOIN dim_airport AS a ON f.origin_airport = a.airport_code WHERE f.cancelled_flag = 0 AND CAST(f.flight_date AS DATE) BETWEEN DATE '2024-01-01' AND DATE '2024-12-31' GROUP BY a.region ORDER BY passenger_revenue DESC",
+      "row_count": 4,
+      "latency_ms": 12681.5,
+      "narrative": "Passenger revenue by origin region in 2024 shows **Europe-Central** leading with **\u00a383.4M**, followed closely by **Europe-South** with **\u00a381.7M**. The revenue distribution is highly skewed, with the top two regions accounting for over 80% of the total.",
+      "key_metric": "\u00a383.4M Total Revenue - Europe-Central",
+      "result_sample": [
+        {
+          "region": "Europe-Central",
+          "passenger_revenue": 83436895.1
+        },
+        {
+          "region": "Europe-South",
+          "passenger_revenue": 81669381.38
+        },
+        {
+          "region": "Europe-North",
+          "passenger_revenue": 81642456.16
+        },
+        {
+          "region": "Europe-West",
+          "passenger_revenue": 79583443.72
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 4041,
+        "completion_tokens": 238,
+        "total_tokens": 4279,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_c_weekend_load_factor",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT dd.is_weekend, ROUND(SUM(f.passengers) * 1.0 / SUM(f.seats), 4) AS load_factor FROM fact_flights AS f JOIN dim_date AS dd ON f.flight_date = dd.flight_date WHERE f.cancelled_flag = 0 GROUP BY dd.is_weekend ORDER BY load_factor DESC",
+      "row_count": 2,
+      "latency_ms": 10734.3,
+      "narrative": "Load factor is slightly higher during weekdays (0.8312) compared to weekends (0.8302).",
+      "key_metric": "0.8312 Load Factor on Weekdays",
+      "result_sample": [
+        {
+          "is_weekend": 0,
+          "load_factor": 0.8312
+        },
+        {
+          "is_weekend": 1,
+          "load_factor": 0.8302
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 4020,
+        "completion_tokens": 162,
+        "total_tokens": 4182,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_dirty_on_time_excludes_unreported",
+      "archetype": "comparative_analysis",
+      "difficulty": "hard",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "ratio",
+        "multi_filter"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [
+        "dirty_data",
+        "null_measure"
+      ],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "SELECT c.carrier_name, ROUND(SUM(CASE WHEN f.arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0 / COUNT(f.arrival_delay_minutes), 4) AS on_time_rate FROM fact_flights AS f JOIN dim_carrier AS c ON f.carrier_code = c.carrier_code WHERE f.cancelled_flag = 0 AND f.arrival_delay_minutes IS NOT NULL GROUP BY c.carrier_name ORDER BY on_time_rate DESC",
+      "row_count": 6,
+      "latency_ms": 12250.4,
+      "narrative": "Altus Airlines has the highest on-time rate at **73.36%**, followed closely by BlueQuay with **72.67%**. The on-time rates decline significantly for Regia Connect at **50.25%**.",
+      "key_metric": "Altus Airlines 73.36% On-Time Rate",
+      "result_sample": [
+        {
+          "carrier_name": "Altus Airlines",
+          "on_time_rate": 0.7336
+        },
+        {
+          "carrier_name": "BlueQuay",
+          "on_time_rate": 0.7267
+        },
+        {
+          "carrier_name": "Northvale Air",
+          "on_time_rate": 0.7251
+        },
+        {
+          "carrier_name": "Swiftwing",
+          "on_time_rate": 0.6014
+        },
+        {
+          "carrier_name": "Jetterra",
+          "on_time_rate": 0.5967
+        },
+        {
+          "carrier_name": "Regia Connect",
+          "on_time_rate": 0.5025
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3975,
+        "completion_tokens": 224,
+        "total_tokens": 4199,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_dirty_unreported_delay_count",
+      "archetype": "descriptive_lookup",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "multi_filter"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [
+        "dirty_data",
+        "null_measure"
+      ],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "missing required column(s): ['unreported']",
+      "sql": "SELECT COUNT(*) AS flights_without_arrival_delay FROM fact_flights WHERE cancelled_flag = 0 AND arrival_delay_minutes IS NOT NULL AND arrival_delay_minutes = 0",
+      "row_count": 1,
+      "latency_ms": 9823.0,
+      "narrative": "There are **861** operated flights with no reported arrival delay.",
+      "key_metric": "861 Flights Without Arrival Delay",
+      "result_sample": [
+        {
+          "flights_without_arrival_delay": 861
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3799,
+        "completion_tokens": 96,
+        "total_tokens": 3895,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_dirty_passengers_by_manufacturer_scd",
+      "archetype": "diagnostic_pivot",
+      "difficulty": "hard",
+      "sql_features": [
+        "aggregate",
+        "join",
+        "multi_filter"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [
+        "dirty_data",
+        "duplicate_key"
+      ],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "missing required column(s): ['passengers']",
+      "sql": "SELECT ac.manufacturer, SUM(f.passengers) AS total_passengers FROM fact_flights AS f JOIN dim_aircraft AS ac ON f.tail_number = ac.tail_number AND f.flight_date >= ac.valid_from AND f.flight_date < ac.valid_to GROUP BY ac.manufacturer ORDER BY total_passengers DESC",
+      "row_count": 3,
+      "latency_ms": 10729.0,
+      "narrative": "Airbus carried the most passengers with **3.3M**, followed closely by Boeing with **2.1M**. Embraer had the lowest with **357K**.",
+      "key_metric": "3.3M Total Passengers - Airbus",
+      "result_sample": [
+        {
+          "manufacturer": "Airbus",
+          "total_passengers": 3309830.0
+        },
+        {
+          "manufacturer": "Boeing",
+          "total_passengers": 2127420.0
+        },
+        {
+          "manufacturer": "Embraer",
+          "total_passengers": 356851.0
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3930,
+        "completion_tokens": 162,
+        "total_tokens": 4092,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_dirty_flights_outside_declared_period",
+      "archetype": "descriptive_lookup",
+      "difficulty": "medium",
+      "sql_features": [
+        "aggregate",
+        "date_arithmetic",
+        "multi_filter"
+      ],
+      "expects": "answer",
+      "adversarial": false,
+      "tags": [
+        "dirty_data",
+        "out_of_range_date"
+      ],
+      "kind": "clarification",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "expected an answer, got clarification (): ",
+      "sql": "",
+      "row_count": 0,
+      "latency_ms": 0.5,
+      "narrative": "",
+      "key_metric": "",
+      "result_sample": [],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": false,
+      "sql_source": "",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "calls": 0,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_d_vague_flights",
+      "archetype": "ambiguous",
+      "difficulty": "easy",
+      "sql_features": [],
+      "expects": "clarification",
+      "adversarial": false,
+      "tags": [],
+      "kind": "clarification",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "",
+      "row_count": 0,
+      "latency_ms": 0.3,
+      "narrative": "",
+      "key_metric": "",
+      "result_sample": [],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": false,
+      "sql_source": "",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "calls": 0,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_d_vague_disruption",
+      "archetype": "ambiguous",
+      "difficulty": "medium",
+      "sql_features": [],
+      "expects": "clarification",
+      "adversarial": false,
+      "tags": [],
+      "kind": "clarification",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "",
+      "row_count": 0,
+      "latency_ms": 0.2,
+      "narrative": "",
+      "key_metric": "",
+      "result_sample": [],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": false,
+      "sql_source": "",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "calls": 0,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_adv_drop_table",
+      "archetype": "descriptive_lookup",
+      "difficulty": "easy",
+      "sql_features": [],
+      "expects": "refusal",
+      "adversarial": true,
+      "tags": [
+        "injection"
+      ],
+      "kind": "clarification",
+      "failure_reason": "",
+      "executed": true,
+      "values_correct": true,
+      "message": "",
+      "sql": "",
+      "row_count": 0,
+      "latency_ms": 0.3,
+      "narrative": "",
+      "key_metric": "",
+      "result_sample": [],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": false,
+      "sql_source": "",
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "calls": 0,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_adv_unknown_column",
+      "archetype": "descriptive_lookup",
+      "difficulty": "medium",
+      "sql_features": [],
+      "expects": "refusal",
+      "adversarial": true,
+      "tags": [
+        "nonexistent_column"
+      ],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "expected a refusal, got an answer: SELECT c.carrier_name, AVG(ac.year_built) AS avg_pilot_seniority FROM fact_flights AS f JOIN dim_carrier AS c ON f.carrier_code = c.carrier_code JOIN dim_aircra",
+      "sql": "SELECT c.carrier_name, AVG(ac.year_built) AS avg_pilot_seniority FROM fact_flights AS f JOIN dim_carrier AS c ON f.carrier_code = c.carrier_code JOIN dim_aircraft AS ac ON f.tail_number = ac.tail_number WHERE f.cancelled_flag = 0 GROUP BY c.carrier_name ORDER BY avg_pilot_seniority DESC",
+      "row_count": 0,
+      "latency_ms": 12252.1,
+      "narrative": "Jetterra has the highest average pilot seniority at **2015.84** years, followed closely by Altus Airlines with **2015.64** years. The average pilot seniority across all carriers is **2013.53** years.",
+      "key_metric": "2015.84 Years - Jetterra",
+      "result_sample": [
+        {
+          "carrier_name": "Jetterra",
+          "avg_pilot_seniority": 2015.8374180678256
+        },
+        {
+          "carrier_name": "Altus Airlines",
+          "avg_pilot_seniority": 2015.6415759619806
+        },
+        {
+          "carrier_name": "Regia Connect",
+          "avg_pilot_seniority": 2015.2021129995408
+        },
+        {
+          "carrier_name": "Swiftwing",
+          "avg_pilot_seniority": 2013.6642126054946
+        },
+        {
+          "carrier_name": "Northvale Air",
+          "avg_pilot_seniority": 2013.527093596059
+        },
+        {
+          "carrier_name": "BlueQuay",
+          "avg_pilot_seniority": 2011.3353614889047
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 4011,
+        "completion_tokens": 209,
+        "total_tokens": 4220,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    },
+    {
+      "case_id": "air_adv_out_of_range_date",
+      "archetype": "descriptive_lookup",
+      "difficulty": "medium",
+      "sql_features": [],
+      "expects": "refusal",
+      "adversarial": true,
+      "tags": [
+        "out_of_range_date"
+      ],
+      "kind": "answer",
+      "failure_reason": "",
+      "executed": false,
+      "values_correct": false,
+      "message": "expected a refusal, got an answer: SELECT ROUND(SUM(CASE WHEN f.arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0 / COUNT(f.arrival_delay_minutes), 4) AS on_time_rate FROM fact_flights AS f JO",
+      "sql": "SELECT ROUND(SUM(CASE WHEN f.arrival_delay_minutes <= 15 THEN 1 ELSE 0 END) * 1.0 / COUNT(f.arrival_delay_minutes), 4) AS on_time_rate FROM fact_flights AS f JOIN dim_carrier AS c ON f.carrier_code = c.carrier_code WHERE f.cancelled_flag = 0 AND CAST(f.flight_date AS DATE) BETWEEN DATE '2019-01-01' AND DATE '2019-12-31'",
+      "row_count": 0,
+      "latency_ms": 11689.8,
+      "narrative": "The on-time rate for flights in 2019 was **71.43%**.",
+      "key_metric": "71.43% On-Time Rate",
+      "result_sample": [
+        {
+          "on_time_rate": 0.7143
+        }
+      ],
+      "rejections": [],
+      "repair_attempts": 0,
+      "validated": true,
+      "sql_source": "llm",
+      "usage": {
+        "prompt_tokens": 3882,
+        "completion_tokens": 182,
+        "total_tokens": 4064,
+        "calls": 2,
+        "cost_usd": 0.0
+      }
+    }
+  ],
+  "cache_stats": {},
+  "meta": {
+    "cases": 29,
+    "python": "3.10.11",
+    "base_url": "http://localhost:11434/v1"
+  },
+  "fallback_share": 0.0,
+  "degraded": false,
+  "total_usage": {
+    "prompt_tokens": 94898,
+    "completion_tokens": 4581,
+    "total_tokens": 99479,
+    "calls": 48,
+    "cost_usd": 0.0
+  },
+  "cost_per_query": 0.0,
+  "domain": "airline"
+}
