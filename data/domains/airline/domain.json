@@ -1,0 +1,20 @@
+{
+  "name": "airline",
+  "title": "European airline on-time performance",
+  "description": "Synthetic flight operations for six European carriers, 2023-2024: a flights fact and a fuel fact at deliberately different grains, plus carrier, airport, aircraft, crew and calendar dimensions. Generated under a fixed seed -- not real operational data.",
+  "semantic_layer": "data/domains/airline/semantic_layer.json",
+  "warehouse": "data/warehouse/airline.duckdb",
+  "vector_cache": "data/warehouse/airline_embedding_cache.json",
+  "gold_queries": "evals/datasets/airline_gold_queries.json",
+  "fallback_templates": "",
+  "build_command": "python scripts/build_airline_domain.py && python scripts/build_airline_semantic_layer.py",
+  "tables": {
+    "fact_flights": "data/raw/airline/fact_flights.csv",
+    "fact_fuel": "data/raw/airline/fact_fuel.csv",
+    "dim_carrier": "data/raw/airline/dim_carrier.csv",
+    "dim_airport": "data/raw/airline/dim_airport.csv",
+    "dim_aircraft": "data/raw/airline/dim_aircraft.csv",
+    "dim_date": "data/raw/airline/dim_date.csv",
+    "dim_crew": "data/raw/airline/dim_crew.csv"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "_comment": "Who may see which rows of the retail warehouse. Deployment configuration, not a domain fact, which is why it is here and not in semantic_layer.json. The grant keys must match a row policy's grant_key. Absent 'grants' for a key means the principal is not scoped by that policy at all; a key present with an empty list means scoped to nothing, which resolves to zero rows rather than to no filter.",
+  "principals": [
+    {
+      "id": "steward",
+      "role": "data_steward",
+      "unrestricted": true,
+      "pii_access": "unmasked",
+      "description": "The default identity. Unrestricted, because every number this project has published was measured without row restriction."
+    },
+    {
+      "id": "analyst_north",
+      "role": "regional_analyst",
+      "pii_access": "masked",
+      "grants": {
+        "region": [
+          "PL-North"
+        ]
+      },
+      "description": "Reads the northern region only."
+    },
+    {
+      "id": "analyst_south",
+      "role": "regional_analyst",
+      "pii_access": "masked",
+      "grants": {
+        "region": [
+          "PL-South"
+        ]
+      },
+      "description": "Reads the southern region only."
+    },
+    {
+      "id": "analyst_national",
+      "role": "analyst",
+      "pii_access": "masked",
+      "grants": {
+        "region": [
+          "PL-North",
+          "PL-South",
+          "PL-Central"
+        ]
+      },
+      "description": "Granted every region, and still filtered -- the predicate is injected and simply excludes nothing. Kept as a distinct principal from the steward because 'sees everything' and 'is not subject to the policy' are different states, and only the second one can silently start seeing a region added tomorrow."
+    },
+    {
+      "id": "contractor",
+      "role": "contractor",
+      "pii_access": "masked",
+      "grants": {
+        "region": []
+      },
+      "description": "Granted nothing. Reads zero rows -- the empty-grant case that must never degrade to an absent filter."
+    }
+  ]
+}

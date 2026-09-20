@@ -1,0 +1,20 @@
+{
+  "name": "retail",
+  "title": "FMCG retail sales",
+  "description": "Daily packaged-goods sales across Polish stores, 2022-2024, as a star schema: one sales fact plus product, store and calendar dimensions, an inventory fact and a promotions fact.",
+  "semantic_layer": "data/semantic/semantic_layer.json",
+  "warehouse": "data/warehouse/semantic_query_engine.duckdb",
+  "vector_cache": "data/semantic/embedding_cache.json",
+  "gold_queries": "evals/datasets/gold_queries.json",
+  "fallback_templates": "fmcg",
+  "build_command": "python scripts/build_star_schema.py",
+  "tables": {
+    "fmcg_sales": "data/raw/star/fmcg_sales.csv",
+    "dim_product": "data/raw/star/dim_product.csv",
+    "dim_store": "data/raw/star/dim_store.csv",
+    "dim_calendar": "data/raw/star/dim_calendar.csv",
+    "fact_inventory": "data/raw/star/fact_inventory.csv",
+    "fact_promotions": "data/raw/star/fact_promotions.csv",
+    "weekly_modeling_data": "data/raw/fmcg_weekly_modeling.csv"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "_comment": "See data/domains/retail/principals.json. Scoped by carrier_code; see the airline semantic layer's governance block for why carrier and not region.",
+  "principals": [
+    {
+      "id": "steward",
+      "role": "data_steward",
+      "unrestricted": true,
+      "pii_access": "unmasked",
+      "description": "The default identity: unrestricted rows, unmasked PII."
+    },
+    {
+      "id": "ops_northvale",
+      "role": "carrier_analyst",
+      "pii_access": "masked",
+      "grants": {
+        "carrier_code": [
+          "NV"
+        ]
+      },
+      "description": "Northvale Air's own operations analyst: their flights, their airframes, their crew, and their crew's contact details masked."
+    },
+    {
+      "id": "ops_northvale_hr",
+      "role": "carrier_hr",
+      "pii_access": "unmasked",
+      "grants": {
+        "carrier_code": [
+          "NV"
+        ]
+      },
+      "description": "Row-restricted like the analyst but cleared for personal data. The two axes are independent: seeing fewer rows and seeing more of each row are different grants, and collapsing them into one role is how a masking policy ends up keyed off the wrong thing."
+    },
+    {
+      "id": "alliance_meridian",
+      "role": "alliance_analyst",
+      "pii_access": "masked",
+      "grants": {
+        "carrier_code": [
+          "BQ",
+          "RG"
+        ]
+      },
+      "description": "Sees the Meridian alliance's carriers -- BlueQuay and Regia Connect. A multi-value grant, which is the case a single-value implementation quietly gets wrong."
+    },
+    {
+      "id": "contractor",
+      "role": "contractor",
+      "pii_access": "masked",
+      "grants": {
+        "carrier_code": []
+      },
+      "description": "Granted nothing; reads zero rows."
+    }
+  ]
+}
