@@ -9,8 +9,14 @@ from __future__ import annotations
 
 from semantic_query_engine.domain.registry import (
     DimensionRegistry,
+    DomainRegistries,
+    GrainRegistry,
+    IdentifierRegistry,
+    LanguageProfile,
     MetricDefinition,
     MetricRegistry,
+    TableGrain,
+    TopicPrompt,
     load_domain_registries,
 )
 
@@ -18,5 +24,11 @@ __all__ = [
     "DimensionRegistry",
     "MetricDefinition",
     "MetricRegistry",
+    "DomainRegistries",
+    "GrainRegistry",
+    "IdentifierRegistry",
+    "LanguageProfile",
+    "TopicPrompt",
+    "TableGrain",
     "load_domain_registries",
 ]
