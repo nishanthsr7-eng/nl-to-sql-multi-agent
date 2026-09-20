@@ -1,0 +1,252 @@
+{
+  "_readme": [
+    "Human labels for the narrative judge. Each entry scores ONE narrative on the",
+    "same three axes and the same 0/1/2 scale the judge uses, so the two can be",
+    "compared directly (evals/judge.py::calibration).",
+    "",
+    "This file is hand-written and stays hand-written. It is the one artefact in",
+    "the measurement layer that a model must never produce: its entire purpose is",
+    "to be an independent check on a model's scoring, and a generated label set",
+    "would be the judge marking its own homework one level up.",
+    "",
+    "Until it has entries, `sqe judge` reports its scores as UNCALIBRATED and does",
+    "not claim them as a measurement of narrative quality. The grounding rate is",
+    "unaffected either way -- that half is arithmetic, not judgement.",
+    "",
+    "To label: run `sqe judge --label --sample 20`, which prints one narrative at a",
+    "time with its question and rows and writes your scores here. Label the sample",
+    "it gives you rather than cherry-picking cases; a set biased toward narratives",
+    "that looked wrong measures the judge on hard cases only and overstates its",
+    "disagreement.",
+    "",
+    "The number that matters most on the far side is judge_lenient: cases the judge",
+    "passed and you failed. A judge that is generous where a human is not cannot",
+    "support a claim about narrative quality, whatever its per-axis agreement says.",
+    "",
+    "Axes, scored 0 (fails) / 1 (partial) / 2 (passes):",
+    "  relevance    -- does it answer the question that was asked",
+    "  faithfulness -- do its qualitative claims follow from the rows",
+    "  calibration  -- does it claim causes, forecasts or significance the rows",
+    "                  cannot establish",
+    "",
+    "Do NOT score arithmetic. Whether a figure appears in the rows is checked",
+    "deterministically by evals/grounding.py; judging it here would make the",
+    "calibration set disagree with the judge for a reason neither is wrong about.",
+    "",
+    "Entry shape:",
+    "  {\"case_id\": \"b_revenue_by_region\", \"relevance\": 2, \"faithfulness\": 1,",
+    "   \"calibration\": 2, \"reason\": \"calls the gap 'significant' on three rows\"}"
+  ],
+  "labels": [
+    {
+      "case_id": "a_avg_price_by_brand",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_avg_price_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_avg_price_by_channel",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_avg_price_by_pack_type",
+      "relevance": 2,
+      "faithfulness": 1,
+      "calibration": 1,
+      "reason": ""
+    },
+    {
+      "case_id": "a_depletion_by_brand",
+      "relevance": 1,
+      "faithfulness": 2,
+      "calibration": 1,
+      "reason": ""
+    },
+    {
+      "case_id": "a_depletion_by_category",
+      "relevance": 1,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_depletion_by_channel",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_depletion_by_pack_type",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_depletion_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_by_brand",
+      "relevance": 1,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_by_channel",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 1,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_by_pack_type",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_discount_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_e_commerce_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_juice_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_milk_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_pl_central_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_pl_north_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 1,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_pl_south_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_readymeal_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_retail_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 1,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_snackbar_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_revenue_yogurt_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_units_by_brand",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 1,
+      "reason": ""
+    },
+    {
+      "case_id": "a_units_by_category",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_units_by_channel",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_units_by_pack_type",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    },
+    {
+      "case_id": "a_units_by_region",
+      "relevance": 2,
+      "faithfulness": 2,
+      "calibration": 2,
+      "reason": ""
+    }
+  ]
+}
