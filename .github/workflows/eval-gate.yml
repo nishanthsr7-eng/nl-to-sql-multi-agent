@@ -1,0 +1,48 @@
+name: Eval gate
+
+# The regression gate over the committed accuracy timeline.
+#
+# This workflow does NOT run the eval suite. It cannot: the generator is a local
+# Ollama model on localhost:11434, and a GitHub-hosted runner has no way to reach
+# it. The suite runs nightly on the development machine via Task Scheduler
+# (scripts/nightly_eval.ps1), which commits its artefacts to evals/results/.
+#
+# What runs here is the half that is portable and is also the half that protects
+# the repository: reading those committed artefacts and refusing a pull request
+# that moved value accuracy down by more than the tolerance, or that recorded a
+# containment breach. It needs no model, no warehouse and no network.
+#
+# If the generator ever moves to a hosted provider, the honest change is to add a
+# scheduled job here that actually runs `sqe eval` -- not to relax this gate.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The gate compares the two most recent runs of each baseline, so it
+          # needs the files, not the history -- but a shallow clone is enough
+          # only because the artefacts are committed rather than reconstructed.
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install package (with dev extras)
+        run: pip install -e ".[dev]"
+
+      - name: Regression gate over evals/results/
+        # Exits 1 on a >2pp drop in value accuracy against the previous run of
+        # the same baseline, or on any containment breach in a committed run.
+        # Exits 0 with a note when a baseline has only one run: the first
+        # recording of a new configuration has nothing to regress against.
+        run: python -m evals.gate
