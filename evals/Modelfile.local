@@ -1,0 +1,22 @@
+# The local model the ladder is measured against, pinned.
+#
+# Committed rather than left to `ollama run` defaults for one reason: the
+# committed runs in evals/results/ are an accuracy timeline, and the Phase 3
+# regression gate compares a PR against them. A number is only comparable to a
+# later number if the model that produced it is a fixed artefact -- so the tag,
+# the quantisation and the context length all live here rather than in whatever
+# a given machine happened to have pulled.
+#
+#   ollama create sqe-coder -f evals/Modelfile.local
+#
+FROM qwen2.5-coder:7b
+
+# The SQL-generation prompt is ~4k tokens (schema retrieval + few-shot bank).
+# Ollama's default context is 4096 and it truncates *silently* -- a truncated
+# schema produces plausible SQL against columns the model never saw, which
+# scores as a model error rather than as the configuration error it is.
+PARAMETER num_ctx 8192
+
+# The generator is a precision task; the pipeline sets temperature per call,
+# but pinning it here keeps a bare `ollama run sqe-coder` consistent with it.
+PARAMETER temperature 0

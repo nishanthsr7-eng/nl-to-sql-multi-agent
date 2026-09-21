@@ -1,0 +1,16 @@
+# A matrix row, pinned to exactly the same serving configuration as
+# Modelfile.local so that `sqe matrix` varies the base model and nothing else.
+#
+# Without this the comparison is not between models. Ollama's default context is
+# 4096, the SQL-generation prompt is ~4k tokens, and the two failure modes differ
+# per model: qwen2.5-coder truncates silently (plausible SQL against columns it
+# never saw), while deepseek-coder-v2 returns a 400 and the pipeline falls back
+# to the deterministic templates. Either way the row would report a context
+# budget as a model's accuracy.
+#
+#   ollama create sqe-deepseek -f evals/Modelfile.deepseek
+#
+FROM deepseek-coder-v2:lite
+
+PARAMETER num_ctx 8192
+PARAMETER temperature 0
