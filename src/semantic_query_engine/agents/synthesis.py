@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from typing import Any, cast
 
 import pandas as pd
@@ -11,38 +10,17 @@ import pandas as pd
 from semantic_query_engine.core.config import PIPELINE, LLMSettings, load_llm_settings
 from semantic_query_engine.core.llm_client import ChatClient, build_client
 from semantic_query_engine.core.logging import get_logger
+from semantic_query_engine.core.results import StructuredResponse
 from semantic_query_engine.core.schemas import llm_retry, parse_synthesis_payload
+from semantic_query_engine.core.usage import usage_from_response
 from semantic_query_engine.prompts.synthesis import SYSTEM_PROMPT, build_user_prompt
 
 logger = get_logger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# StructuredResponse -- 5 clearly separated output layers
-# ---------------------------------------------------------------------------
-
-@dataclass
-class StructuredResponse:
-    # Layer 1 -- 2-3 sentence plain-English answer
-    narrative_summary: str
-    # Layer 2 -- primary number prominently surfaced (e.g. "£2.86M total revenue")
-    key_metric: str | None
-    # Layer 3 -- baseline vs period, or entity vs entity
-    comparison_context: str | None
-    # Layer 4 -- suggested visualisation type
-    chart_recommendation: str
-    # Layer 5 -- SQL for analyst validation (explainability trace)
-    sql_query: str
-    # Supporting fields
-    result_table: list[dict[str, Any]] = field(default_factory=list)
-    intent: str = ""
-    archetype_label: str = ""          # e.g. "B - Comparative Analysis"
-    archetype_description: str = ""    # one-liner about the archetype
-    agent_trace: list[str] = field(default_factory=list)
-    # Transparency metadata -- surfaced in the UI so users can see whether an
-    # answer came from the LLM or the deterministic fallback, and how long it took.
-    sql_source: str = ""
-    elapsed_ms: float = 0.0
+# StructuredResponse now lives in core.results alongside the Clarification and
+# Failure variants it forms a union with. Re-exported here because this module is
+# where it is produced, and callers import it from both places.
+__all__ = ["StructuredResponse", "SynthesisAgent"]
 
 
 # ---------------------------------------------------------------------------
@@ -51,8 +29,17 @@ class StructuredResponse:
 
 class SynthesisAgent:
 
-    def __init__(self, client_factory: Callable[[LLMSettings], ChatClient] = build_client):
+    def __init__(
+        self,
+        client_factory: Callable[[LLMSettings], ChatClient] = build_client,
+        settings: LLMSettings | None = None,
+    ):
         self._client_factory = client_factory
+        # Resolved once, when the agent is built, rather than on every request.
+        # Provider configuration is process-level: re-reading the environment per
+        # question bought nothing and put an env scan on the hot path of a service
+        # that is meant to answer concurrent requests.
+        self._settings = settings or load_llm_settings()
 
     def run(
         self,
@@ -85,7 +72,7 @@ class SynthesisAgent:
                 sql_source=sql_source,
             )
 
-        settings = load_llm_settings()
+        settings = self._settings
         if settings.is_enabled:
             try:
                 return self._synthesise_with_llm(
@@ -149,6 +136,10 @@ class SynthesisAgent:
             archetype_description=archetype_description,
             agent_trace=agent_trace,
             sql_source=sql_source,
+            # This call's tokens only. The orchestrator replaces it with the
+            # run's total, since a caller reading a result wants what the
+            # question cost, not what the last agent in the chain cost.
+            usage=usage_from_response(response, settings.synthesizer_model, settings.base_url),
         )
 
     # -----------------------------------------------------------------------
