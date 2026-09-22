@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "semantic-query-engine"
-version = "0.2.0"
+version = "1.0.0"
 description = "Natural-language analytics assistant for FMCG sales data -- NL question in, governed SQL and a structured business answer out."
 requires-python = ">=3.10"
 dependencies = [
