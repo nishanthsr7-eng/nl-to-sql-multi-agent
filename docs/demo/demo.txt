@@ -1,0 +1,150 @@
+
+$ sqe ask 'Compare total revenue across all brands'
+
+┌─────────────────────────────────┐
+│ £2.86M Total Revenue - SnBrand2 │
+└─────────────────────────────────┘
+SnBrand2 leads with **£2.86M** in total revenue, followed closely by YoBrand4 with **£2.47M**. The 
+top three brands together account for **£7.87M** of the total revenue.
+SnBrand2 outperformed YoBrand4 by **14.3%**.
+
+brand     total_revenue
+SnBrand2   2,860,430.84
+YoBrand4   2,473,953.74
+YoBrand3   2,116,950.30
+YoBrand2   2,015,514.93
+MiBrand3   1,664,244.74
+YoBrand1   1,619,774.34
+ReBrand4   1,530,909.02
+ReBrand2   1,253,133.67
+MiBrand1   1,134,908.75
+MiBrand4     796,853.75
+ReBrand1     792,286.33
+JuBrand3     652,277.27
+SnBrand3     540,694.72
+MiBrand2     499,368.18
+
+suggested chart: bar
+
+
+$ sqe ask 'What is the stock depletion rate by SKU?' --explain
+
+┌───────────────────────────────────────────────────────┐
+│ Top SKU YO-020 with a stock depletion rate of 0.1436. │
+└───────────────────────────────────────────────────────┘
+The top SKU, **YO-020**, has the highest stock depletion rate at **0.1436**. The distribution is 
+relatively uniform with most SKUs showing rates between **0.12** and **0.14**.
+YO-020 outperformed YO-029 by 0.0014.
+
+sku     stock_depletion_rate
+YO-020                0.1436
+YO-029                0.1422
+YO-005                0.1415
+YO-024                0.1414
+YO-016                0.1408
+YO-012                0.1406
+YO-018                0.1390
+YO-003                0.1370
+YO-009                0.1359
+SN-028                0.1356
+SN-030                0.1352
+SN-019                0.1335
+SN-010                0.1309
+RE-025                0.1280
+RE-017                0.1278
+RE-007                0.1246
+RE-015                0.1246
+RE-004                0.1241
+YO-014                0.1234
+YO-001                0.1230
+MI-002                0.1199
+SN-013                0.1187
+MI-026                0.1180
+MI-023                0.1177
+SN-027                0.1139
+JU-021                0.1134
+MI-011                0.1108
+MI-008                0.1100
+MI-022                0.1024
+MI-006                0.1021
+
+suggested chart: bar
+
+Plan  intent=descriptive_lookup  archetype=A · Descriptive Lookup
+Single-fact retrieval — explicit entity matching across the domain's dimensions and time attributes 
+to extract a standalone data point.
+
+SQL
+SELECT sku, ROUND(SUM(units_sold) * 1.0 / NULLIF(SUM(stock_available), 0), 4) AS 
+stock_depletion_rate FROM fmcg_sales GROUP BY sku ORDER BY stock_depletion_rate DESC LIMIT 1000
+
+Agent trace
+  • Planner: Archetype A (fallback): metric present, defaulting to descriptive lookup. | archetype=A
+· Descriptive Lookup
+  • Schema Retriever: tables=['fact_inventory', 'dim_product', 'fmcg_sales', 'dim_store', 
+'dim_calendar']
+  • SQL Generator: source=llm | metrics_injected=['stock_depletion_rate', 'gross_margin', 
+'promotional_uplift']
+  • Validator: passed; no LIMIT was specified, capped at 1000 rows.
+  • Execution: returned 30 rows
+  • Synthesis: LLM generated summary and recommended 'bar' chart.
+  • Synthesis: structured response ready
+
+elapsed 11672.9 ms · sql source: llm
+  sql_generation 4869ms · synthesis 4688ms · schema_retrieval 2098ms · validation 10ms · execution 
+7ms · planner 0ms
+tokens 4227 (4043 in / 184 out) in 2 call(s) · cost $0.000000
+
+
+$ sqe ask 'Show me the numbers'
+
+┌───────────────────────── Clarification needed ─────────────────────────┐
+│ Your question is missing key parameters:                               │
+│   • metric (e.g. revenue, units sold, stock depletion)                 │
+│   • timeframe (e.g. last week, March 2024, 2023)                       │
+│   • product scope (e.g. SKU, brand, or category)                       │
+│                                                                        │
+│ Example: "What was the total revenue for the Yogurt category in 2024?" │
+└────────────────────────────────────────────────────────────────────────┘
+missing: metric (e.g. revenue, units sold, stock depletion), timeframe (e.g. last week, March 2024, 
+2023), product scope (e.g. SKU, brand, or category)
+
+
+$ sqe ask 'What was the total revenue for brand Zzzz in 1999?' --explain
+
+┌────────────┐
+│ No Revenue │
+└────────────┘
+No sales data available for brand **Zzzz** in 1999.
+
+total_revenue
+            -
+
+suggested chart: bar
+
+Plan  intent=descriptive_lookup  archetype=A · Descriptive Lookup
+Single-fact retrieval — explicit entity matching across the domain's dimensions and time attributes 
+to extract a standalone data point.
+
+SQL
+SELECT SUM(s.units_sold * s.price_unit) AS total_revenue FROM fmcg_sales AS s JOIN dim_product AS p 
+ON s.sku = p.sku WHERE p.brand = 'Zzzz' AND EXTRACT(YEAR FROM CAST(s.date AS DATE)) = 1999 LIMIT 
+1000
+
+Agent trace
+  • Planner: Archetype A (fallback): metric present, defaulting to descriptive lookup. | archetype=A
+· Descriptive Lookup
+  • Schema Retriever: tables=['fact_inventory', 'fact_promotions', 'dim_product', 'dim_store', 
+'fmcg_sales', 'dim_calendar']
+  • SQL Generator: source=llm | metrics_injected=['total_revenue', 'promotional_uplift', 
+'gross_margin']
+  • Validator: passed; no LIMIT was specified, capped at 1000 rows.
+  • Execution: returned 1 rows
+  • Synthesis: LLM generated summary and recommended 'bar' chart.
+  • Synthesis: structured response ready
+
+elapsed 10539.9 ms · sql source: llm
+  sql_generation 5121ms · synthesis 3172ms · schema_retrieval 2233ms · validation 8ms · execution 
+5ms · planner 0ms
+tokens 3963 (3843 in / 120 out) in 2 call(s) · cost $0.000000
+

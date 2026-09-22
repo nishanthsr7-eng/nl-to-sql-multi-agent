@@ -20,6 +20,21 @@ jobs:
       - name: Install package (with dev extras)
         run: pip install -e ".[dev]"
 
+      - name: Build both domains' warehouses (generated, not committed)
+        # Each domain's CSVs are a deterministic function of a seeded generator,
+        # so they are gitignored rather than stored. Every step below needs the
+        # warehouse tables they produce -- including tests/unit/test_domains.py,
+        # which builds the airline warehouse to check that the second domain runs
+        # through the same pipeline as the first.
+        #
+        # The airline semantic layer is committed and is NOT rebuilt here: it is
+        # the domain's contract, and regenerating it in CI would let a change to
+        # the generator silently rewrite the contract the tests are checking
+        # against. Only the data is generated.
+        run: |
+          python scripts/build_star_schema.py
+          python scripts/build_airline_domain.py
+
       - name: Lint (ruff)
         run: ruff check .
 
@@ -27,4 +42,26 @@ jobs:
         run: mypy
 
       - name: Unit tests (no network, no API key)
-        run: python -m pytest tests/unit -v
+        run: python -m pytest tests/unit -q
+
+      - name: CLI smoke test (offline -- deterministic fallback path)
+        # Proves the console script is actually installed and that --json still
+        # emits a parseable payload on stdout and nothing else. A unit test can
+        # check the renderer; only a real invocation checks the entry point.
+        run: |
+          sqe schema
+          sqe ask "Compare total revenue across all brands" --json | python -c "import json,sys; d=json.load(sys.stdin); print(d['kind'])"
+
+      - name: Second domain smoke test (offline)
+        # The airline domain ships no deterministic fallback templates, so with
+        # no provider configured `ask` cannot answer -- which is the designed
+        # behaviour and is asserted in the unit tier. What is worth checking here
+        # is that the domain resolves, its semantic layer parses, and the CLI
+        # serves it end to end without touching a model.
+        run: |
+          sqe domains
+          sqe --domain airline schema
+          sqe --domain airline metrics
+
+      - name: Import the API (no server, no network)
+        run: python -c "from semantic_query_engine.api.app import app; print(len(app.routes), 'routes')"

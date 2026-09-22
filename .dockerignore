@@ -1,0 +1,17 @@
+# The image builds the warehouse from the CSVs itself (see Dockerfile), so a
+# developer's local .duckdb file must not be copied in -- it would be stale and
+# would silently shadow the one the build produces.
+data/warehouse/
+data/raw/unused/
+.venv/
+.git/
+.github/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/__pycache__/
+*.egg-info/
+tests/
+evals/
+docs/
+.env

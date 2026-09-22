@@ -1,0 +1,25 @@
+flowchart TB
+    Q["<b>Question</b><br/>sqe ask · POST /query"] --> P
+
+    P["<b>1 · Planner</b><br/>deterministic, no LLM<br/>intent + entities"]
+    R["<b>2 · Schema Retriever</b><br/>vector search,<br/>keyword fallback"]
+    G["<b>3 · SQL Generator</b><br/>LLM-primary,<br/>template fallback"]
+    V{{"<b>4 · Validator</b><br/>sqlglot AST · SELECT-only<br/>allow-list · columns per scope<br/>grain · metric contract · LIMIT"}}
+    S["<b>5 · Synthesis</b><br/>narrative · key metric<br/>comparison · chart"]
+
+    P --> R --> G --> V
+    P -- "AMBIGUOUS" --> C["<b>Clarification</b><br/>exit 2"]
+    V -- "reject · IssueCode" --> RL["repair round<br/>max_repair_attempts"]
+    RL -- "regenerate" --> G
+    RL -- "unrepairable /<br/>budget spent" --> F["<b>Failure</b><br/>exit 1"]
+
+    V == "accept" ==> GOV["<b>AST rewrite</b><br/>inject LIMIT +<br/>row-security predicate"]
+    GOV ==> X["<b>execute_guarded()</b><br/>own cursor · memory caps<br/>timer-interrupt timeout"]
+    X ==> DB[("DuckDB<br/>star schema")]
+    X -.-> AUD["audit log<br/>append-only,<br/>hash-chained"]
+    DB ==> MASK["mask PII<br/>columns"] ==> S
+    S ==> A["<b>StructuredResponse</b><br/>exit 0"]
+
+    A --> OUT["<b>QueryResult.to_dict()</b><br/>one payload, two surfaces<br/>cli/render.py · api/app.py"]
+    C --> OUT
+    F --> OUT

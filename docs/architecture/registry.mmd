@@ -1,0 +1,27 @@
+flowchart LR
+    SL[("<b>semantic_layer.json</b><br/>the active domain's<br/>single source of truth")]
+
+    SL --> MR["<b>MetricRegistry</b><br/>formulas parsed by sqlglot<br/>at load time"]
+    SL --> DR["<b>DimensionRegistry</b><br/>allowed values + aliases"]
+    SL --> IR["<b>IdentifierRegistry</b><br/>SKU / store / promo patterns"]
+    SL --> GR["<b>GrainRegistry</b><br/>key columns · additive measures<br/>join paths · date roles"]
+    SL --> LR["<b>language + examples</b><br/>planner vocabulary<br/>few-shot SQL"]
+    SL --> PR["<b>row policies · PII tags</b><br/>read by governance/policy.py,<br/>not through the registries"]
+
+    MR --> USE
+    DR --> USE
+    IR --> USE
+    GR --> USE
+    LR --> USE
+
+    USE{{"domain/registry.py<br/>five registries"}}
+
+    USE --> C1["Planner<br/>entity extraction"]
+    USE --> C2["SQL Generator<br/>prompt + fallback templates"]
+    USE --> C3["Validator<br/>metric contract · grain check"]
+    PR --> C4["Governance<br/>predicate injection · masking"]
+    USE --> C5["CLI<br/>sqe schema · metrics · examples"]
+
+    D1["data/domains/retail"] -.-> SL
+    D2["data/domains/airline"] -.-> SL
+    ACT["core/domains.py::active_domain()<br/>resolves --domain once,<br/>before any agent is built"] -.-> SL

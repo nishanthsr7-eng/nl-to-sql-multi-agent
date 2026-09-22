@@ -1,0 +1,102 @@
+
+$ sqe principals
+
+ principal         role              rows                       pii       description               
+ analyst_national  analyst           region=PL-North,           masked    Granted every region, and 
+                                     PL-South, PL-Central                 still filtered -- the     
+                                                                          predicate is injected and 
+                                                                          simply excludes nothing.  
+                                                                          Kept as a distinct        
+                                                                          principal from the        
+                                                                          steward because 'sees     
+                                                                          everything' and 'is not   
+                                                                          subject to the policy'    
+                                                                          are different states, and 
+                                                                          only the second one can   
+                                                                          silently start seeing a   
+                                                                          region added tomorrow.    
+ analyst_north     regional_analyst  region=PL-North            masked    Reads the northern region 
+                                                                          only.                     
+ analyst_south     regional_analyst  region=PL-South            masked    Reads the southern region 
+                                                                          only.                     
+ contractor        contractor        region=none                masked    Granted nothing. Reads    
+                                                                          zero rows -- the          
+                                                                          empty-grant case that     
+                                                                          must never degrade to an  
+                                                                          absent filter.            
+ steward           data_steward      all (unrestricted)         unmasked  The default identity.     
+                                                                          Unrestricted, because     
+                                                                          every number this project 
+                                                                          has published was         
+                                                                          measured without row      
+                                                                          restriction.              
+
+
+$ sqe ask Total revenue by region
+
+┌────────────────────────────────┐
+│ £6.7M Total Revenue - PL-South │
+└────────────────────────────────┘
+The top-performing region is **PL-South** with **£6.7M** in total revenue, followed closely by 
+**PL-North** with **£6.7M**. **PL-Central** rounds out the top three with **£6.6M**.
+PL-South outperformed PL-North by **£19,290**.
+
+region      total_revenue
+PL-South     6,666,229.81
+PL-North     6,664,220.52
+PL-Central   6,620,850.25
+
+suggested chart: bar
+
+
+$ sqe ask Total revenue by region --as analyst_north --explain
+
+┌────────────────────────────────┐
+│ £6.7M Total Revenue - PL-North │
+└────────────────────────────────┘
+The top-performing region is **PL-North** with a total revenue of **£6.7M**.
+
+region    total_revenue
+PL-North   6,664,220.52
+
+suggested chart: bar
+
+Plan  intent=descriptive_lookup  archetype=A · Descriptive Lookup
+Single-fact retrieval — explicit entity matching across the domain's dimensions and time attributes 
+to extract a standalone data point.
+
+SQL
+SELECT st.region, ROUND(SUM(s.units_sold * s.price_unit), 2) AS total_revenue FROM fmcg_sales AS s 
+JOIN dim_store AS st ON s.store_id = st.store_id WHERE s.store_id IN (SELECT dim_store.store_id FROM
+dim_store WHERE dim_store.region IN ('PL-North')) AND st.region IN ('PL-North') GROUP BY st.region 
+ORDER BY total_revenue DESC LIMIT 1000
+
+Agent trace
+  • Planner: Archetype A (fallback): metric present, defaulting to descriptive lookup. | archetype=A
+· Descriptive Lookup
+  • Schema Retriever: tables=['dim_store', 'fact_promotions', 'fmcg_sales', 'dim_product', 
+'dim_calendar']
+  • SQL Generator: source=llm | metrics_injected=['total_revenue', 'gross_margin', 
+'promotional_uplift']
+  • Row security: 2 predicate(s) injected for analyst_north -- fmcg_sales: s.store_id IN (SELECT 
+dim_store.store_id FROM dim_store WHERE dim_store.region IN ('PL-North')); dim_store: st.region IN 
+('PL-North')
+  • Validator: passed; no LIMIT was specified, capped at 1000 rows.
+  • Execution: returned 1 rows
+  • Synthesis: LLM generated summary and recommended 'bar' chart.
+  • Synthesis: structured response ready
+
+Governance (as analyst_north)
+  • region_scope on fmcg_sales: s.store_id IN (SELECT dim_store.store_id FROM dim_store WHERE 
+dim_store.region IN ('PL-North'))
+  • region_scope on dim_store: st.region IN ('PL-North')
+
+elapsed 8712.8 ms · sql source: llm
+  synthesis 3398ms · sql_generation 3207ms · schema_retrieval 2083ms · validation 16ms · execution 
+8ms · planner 0ms
+tokens 3807 (3680 in / 127 out) in 2 call(s) · cost $0.000000
+
+
+$ sqe audit --verify
+
+

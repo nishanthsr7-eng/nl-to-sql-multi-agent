@@ -1,0 +1,90 @@
+
+$ sqe eval --baseline ladder
+
+───────────────────── replayed from evals/results/ -- see the module docstring ─────────────────────
+
+                                                                                                    
+ Configuration            Exec. accuracy  Value accuracy  p50 latency  Rejected 1st try  Cost/query 
+ ────────────────────────────────────────────────────────────────────────────────────────────────── 
+ Naive prompt (schema     60.2%           52.5%           8340 ms      2.5%              $0.000000  
+ dump, no semantic                                                                                  
+ layer, no validator)                                                                               
+ + semantic layer         58.5%           51.7%           10200 ms     2.5%              $0.000000  
+ retrieval                                                                                          
+ + AST validator (no      55.1%           50.0%           9954 ms      15.1%             $0.000000  
+ repair)                                                                                            
+ Full pipeline (+         58.5%           51.7%           10506 ms     15.1%             $0.000000  
+ bounded repair)                                                                                    
+                                                                                                    
+
+By archetype                                                                                        
+
+                                                               
+ Stratum               n   Exec. acc.  Value acc.  Conf. wrong 
+ ───────────────────────────────────────────────────────────── 
+ descriptive_lookup    57  64.9%       64.9%       0.0%        
+ diagnostic_pivot      32  68.8%       53.1%       15.6%       
+ comparative_analysis  23  26.1%       13.0%       13.0%       
+ ambiguous             6   66.7%       66.7%       0.0%        
+                                                               
+
+By difficulty                                                                                       
+
+                                                  
+ Stratum  n   Exec. acc.  Value acc.  Conf. wrong 
+ ──────────────────────────────────────────────── 
+ easy     29  58.6%       55.2%       3.4%        
+ medium   56  75.0%       75.0%       0.0%        
+ hard     33  30.3%       9.1%        21.2%       
+                                                  
+
+By SQL feature                                                                                      
+
+                                                           
+ Stratum          n    Exec. acc.  Value acc.  Conf. wrong 
+ ───────────────────────────────────────────────────────── 
+ aggregate        112  58.0%       50.9%       7.1%        
+ multi_filter     24   70.8%       70.8%       0.0%        
+ date_arithmetic  22   27.3%       27.3%       0.0%        
+ cte              21   38.1%       14.3%       23.8%       
+ ratio            20   50.0%       40.0%       10.0%       
+ ordering         18   50.0%       38.9%       11.1%       
+ join             18   50.0%       33.3%       16.7%       
+ window_fn        17   35.3%       5.9%        29.4%       
+                                                           
+
+Validator funnel                                                                                    
+
+                                                              
+ Stage                               Count  Share             
+ ──────────────────────────────────────────────────────────── 
+ Generations reaching the validator  119    100.0%            
+ Rejected on first attempt           18     15.1%             
+ ... repaired within budget          7      38.9% of rejected 
+ ... budget exhausted                11     61.1% of rejected 
+                                                              
+
+Rejections by reason                                                                                
+
+                                                                     
+ Rejection code             First-attempt hits  Share of generations 
+ ─────────────────────────────────────────────────────────────────── 
+ unknown_column             10                  8.4%                 
+ grain_fanout               2                   1.7%                 
+ metric_contract_violation  2                   1.7%                 
+ dropped_entity_filter      2                   1.7%                 
+ not_a_select               2                   1.7%                 
+ mutation_not_allowed       2                   1.7%                 
+ limit_too_small            1                   0.8%                 
+ union_not_allowed          1                   0.8%                 
+ unknown_table              1                   0.8%                 
+                                                                     
+
+Repairs by attempt                                                                                  
+
+                                               
+ Repair attempt  Fixed here  Share of rejected 
+ ───────────────────────────────────────────── 
+ 1               7           38.9%             
+                                               
+

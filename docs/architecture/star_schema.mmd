@@ -1,0 +1,67 @@
+%% Key columns only -- the full schema is `sqe schema`. Grain and date roles are
+%% declared in semantic_layer.json, which is what the validator checks against.
+erDiagram
+    dim_calendar ||--o{ fmcg_sales : date
+    dim_product  ||--o{ fmcg_sales : sku
+    dim_store    ||--o{ fmcg_sales : store_id
+    dim_calendar ||--o{ fact_inventory : date
+    dim_product  ||--o{ fact_inventory : sku
+    dim_store    ||--o{ fact_inventory : store_id
+    dim_product  ||--o{ fact_promotions : sku
+    dim_store    ||--o{ fact_promotions : store_id
+    dim_product  ||--o{ weekly_modeling_data : sku
+
+    dim_calendar {
+        DATE date PK
+        DATE week_start "the week grain's join key"
+        BIGINT iso_week
+        BIGINT fiscal_year
+        BOOLEAN is_holiday_peak
+    }
+    dim_product {
+        VARCHAR sku PK
+        VARCHAR brand
+        VARCHAR category
+        VARCHAR segment
+        DOUBLE unit_cost
+    }
+    dim_store {
+        VARCHAR store_id PK
+        VARCHAR region "also on weekly_modeling_data"
+        VARCHAR channel
+        VARCHAR store_format
+    }
+    fmcg_sales {
+        DATE date PK "grain one SKU"
+        VARCHAR sku PK "in one store"
+        VARCHAR store_id PK "on one day"
+        BIGINT units_sold "additive"
+        DOUBLE price_unit "revenue units_sold x price_unit"
+        VARCHAR pack_type
+        BIGINT promotion_flag
+    }
+    fact_inventory {
+        DATE date PK
+        VARCHAR store_id PK
+        VARCHAR sku PK
+        BIGINT opening_stock "LEVEL not additive"
+        BIGINT receipts "additive"
+        BIGINT closing_stock "LEVEL not additive"
+        BIGINT units_sold "same name as fmcg_sales"
+    }
+    fact_promotions {
+        VARCHAR promo_id PK
+        VARCHAR sku
+        VARCHAR store_id
+        DATE start_date "a RANGE not a day"
+        DATE end_date
+        DOUBLE discount_depth
+    }
+    weekly_modeling_data {
+        DATE week PK "a week start not a day"
+        VARCHAR sku PK
+        VARCHAR region PK "coarser grain"
+        VARCHAR channel PK
+        BIGINT units_sold "same name different grain"
+        DOUBLE price_unit
+    }

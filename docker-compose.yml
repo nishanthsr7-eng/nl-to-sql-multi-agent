@@ -1,0 +1,41 @@
+# Two services over one image: the HTTP API, and a one-shot CLI profile so the
+# same container can be driven from a terminal without a second build.
+#
+#   docker compose up api
+#   docker compose run --rm cli ask "total revenue by region" --explain
+
+services:
+  api:
+    build: .
+    image: semantic-query-engine:latest
+    ports:
+      - "8000:8000"
+    environment:
+      # Optional: without a key the pipeline answers from its deterministic
+      # fallback rather than failing, so the container is useful with no
+      # provider configured -- but /healthz reports llm_enabled=false, because
+      # that is a materially different system to evaluate.
+      SQE_LLM_API_KEY: ${SQE_LLM_API_KEY:-}
+      SQE_LOG_LEVEL: ${SQE_LOG_LEVEL:-INFO}
+      # The image carries both warehouses, but a process serves exactly one --
+      # the domain is resolved before any agent is constructed. There is no
+      # per-request override by design, so selecting airline means a second
+      # container, not a second flag.
+      SQE_DOMAIN: ${SQE_DOMAIN:-retail}
+    read_only: true
+    tmpfs:
+      # DuckDB wants somewhere to spill; the rest of the filesystem stays
+      # read-only so nothing in the serving path can write.
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  cli:
+    build: .
+    image: semantic-query-engine:latest
+    environment:
+      SQE_LLM_API_KEY: ${SQE_LLM_API_KEY:-}
+    # Overridden per invocation by `docker compose run cli <args>`.
+    command: ["examples"]
+    profiles: ["cli"]

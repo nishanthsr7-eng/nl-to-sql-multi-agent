@@ -23,19 +23,32 @@ class _FakeChoice:
 
 
 @dataclass
+class _FakeUsage:
+    prompt_tokens: int
+    completion_tokens: int
+
+
+@dataclass
 class _FakeResponse:
     choices: list[_FakeChoice]
+    # Absent by default, exactly as it is from a provider that does not report
+    # it: token accounting has to survive that rather than raise mid-pipeline.
+    usage: _FakeUsage | None = None
 
 
 class _FakeCompletions:
-    def __init__(self, payloads: list[dict[str, Any]]):
+    def __init__(self, payloads: list[dict[str, Any]], usage: _FakeUsage | None = None):
         self._payloads = list(payloads)
+        self._usage = usage
         self.calls: list[dict[str, Any]] = []
 
     def create(self, **kwargs: Any) -> _FakeResponse:
         self.calls.append(kwargs)
         payload = self._payloads.pop(0) if len(self._payloads) > 1 else self._payloads[0]
-        return _FakeResponse(choices=[_FakeChoice(message=_FakeMessage(content=json.dumps(payload)))])
+        return _FakeResponse(
+            choices=[_FakeChoice(message=_FakeMessage(content=json.dumps(payload)))],
+            usage=self._usage,
+        )
 
 
 @dataclass
@@ -54,8 +67,18 @@ class FakeChatClient:
 
     chat: _FakeChat
 
-    def __init__(self, *payloads: dict[str, Any]):
-        completions = _FakeCompletions(list(payloads) or [{}])
+    def __init__(
+        self,
+        *payloads: dict[str, Any],
+        prompt_tokens: int | None = None,
+        completion_tokens: int | None = None,
+    ):
+        usage = (
+            _FakeUsage(prompt_tokens or 0, completion_tokens or 0)
+            if prompt_tokens is not None or completion_tokens is not None
+            else None
+        )
+        completions = _FakeCompletions(list(payloads) or [{}], usage=usage)
         self.chat = _FakeChat(completions=completions)
 
     @property

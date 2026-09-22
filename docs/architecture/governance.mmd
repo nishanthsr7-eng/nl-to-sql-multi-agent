@@ -1,0 +1,28 @@
+flowchart TB
+    PRIN["<b>principal</b><br/>--principal · SQE_PRINCIPAL<br/>default: unrestricted STEWARD"]
+    PJ[("principals.json<br/>the deployment's identities")]
+    RES{"principals.py<br/>resolve"}
+    PRIN --> RES
+    PJ --> RES
+    RES -- "unknown id" --> ERR["<b>error</b><br/>never an anonymous fallback"]
+    RES -- "known" --> GRANTS["grants held"]
+    GRANTS -- "empty" --> FALSE["compiles to <b>FALSE</b><br/>never an absent predicate"]
+
+    SQL["validated SQL<br/>(sqlglot AST)"] --> INJ
+    SLP[("semantic_layer.json<br/>row policies · PII tags")] --> INJ
+    GRANTS --> INJ
+
+    INJ["<b>row_security.py</b><br/>inject the predicate into<br/><i>every</i> SELECT in the tree"]
+    SEMI["semi-join on the fact's own key,<br/>never a filter on a joined dimension"]
+    SCD["through an SCD: a correlated EXISTS over a<br/><b>half-open</b> validity window<br/>valid_from / valid_to / as_of"]
+    INJ --> SEMI --> SCD --> RUN
+    FALSE --> RUN
+
+    RUN["execute"]
+    RUN --> MASKED["<b>masking.py</b><br/>PII masked on the way out;<br/>derived expressions over it rejected on the way in"]
+    MASKED --> AUDIT["<b>audit.py</b><br/>append-only, hash-chained"]
+
+    RUN --> CHECK{"<b>scope_breaches()</b><br/>re-parses the SQL that <i>ran</i>,<br/>not the injector's bookkeeping"}
+    CHECK -- "breach" --> EXIT1["<b>exit 1</b><br/>no rate, no --fail-under:<br/>a breach is not a metric"]
+
+    ABL["eval ablation ladder"] -.-> NOTE["<b>ValidatorAgent.safety_only()</b> refuses a restricted principal<br/>rather than serving it unfiltered — row policies are not ablatable"]
