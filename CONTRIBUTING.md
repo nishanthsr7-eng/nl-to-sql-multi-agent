@@ -1,4 +1,4 @@
-# Contributing to Semantic Query Engine
+# Contributing to the Multi-Agent Natural Language to SQL System
 
 Development workflow, checks, and the extension points you'll actually touch. For
 *what the system is and why it's built this way*, see [`ARCHITECTURE.md`](ARCHITECTURE.md);

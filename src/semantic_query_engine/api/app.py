@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(
-    title="Semantic Query Engine",
+    title="Multi-Agent Natural Language to SQL System",
     version=__version__,
     summary="Governed natural-language analytics: NL question in, validated SQL and a structured answer out.",
     lifespan=lifespan,

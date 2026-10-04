@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "semantic-query-engine"
 version = "1.0.0"
-description = "Natural-language analytics assistant for FMCG sales data -- NL question in, governed SQL and a structured business answer out."
+description = "Multi-Agent Natural Language to SQL System -- a five-agent NL-to-SQL pipeline over DuckDB with AST validation, row-level governance and a measured evaluation layer."
+license = { text = "MIT" }
 requires-python = ">=3.10"
 dependencies = [
     "duckdb>=1.0.0",
